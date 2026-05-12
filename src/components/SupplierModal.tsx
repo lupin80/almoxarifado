@@ -66,7 +66,6 @@ export function SupplierModal({ isOpen, onClose, initialData }: SupplierModalPro
       if (!response.ok) throw new Error('Falha ao salvar fornecedor');
 
       onClose();
-      // Recarrega a página para atualizar a lista de fornecedores e o dropdown do modal de produtos
       window.location.reload(); 
     } catch (error) {
       console.error("Erro ao salvar fornecedor:", error);
@@ -84,6 +83,8 @@ export function SupplierModal({ isOpen, onClose, initialData }: SupplierModalPro
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm overflow-y-auto">
       <div className="bg-surface-container-low w-full max-w-2xl rounded-xl border border-outline-variant/20 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 my-8">
+        
+        {/* Header */}
         <div className="px-8 py-6 border-b border-outline-variant/10 flex justify-between items-center sticky top-0 bg-surface-container-low z-10">
           <div>
             <h2 className="text-2xl font-black text-on-surface tracking-tight font-headline">
@@ -100,13 +101,15 @@ export function SupplierModal({ isOpen, onClose, initialData }: SupplierModalPro
         </div>
 
         <form className="p-8 space-y-10" onSubmit={handleSubmit}>
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-outline-variant/10 pb-2">
-              <Building2 className="w-5 h-5 text-secondary" />
-              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Dados Cadastrais</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2 space-y-2">
+          <div className="flex flex-col md:flex-row gap-8">
+
+            {/* Coluna da Esquerda - Dados Cadastrais */}
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-2 border-b border-outline-variant/10 pb-2">
+                <Building2 className="w-5 h-5 text-secondary" />
+                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Dados Cadastrais</h3>
+              </div>
+              <div className="space-y-2">
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Razão Social / Nome</label>
                 <input 
                   type="text" 
@@ -143,68 +146,76 @@ export function SupplierModal({ isOpen, onClose, initialData }: SupplierModalPro
                 />
               </div>
             </div>
-          </div>
 
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 border-b border-outline-variant/10 pb-2">
-              <MapPin className="w-5 h-5 text-secondary" />
-              <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Localização e Contato</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Cidade / UF</label>
-                <input 
-                  type="text" 
-                  name="city"
-                  required
-                  value={formData.city}
-                  onChange={handleChange}
-                  className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 px-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all" 
-                  placeholder="São Paulo / SP" 
-                />
+            {/* Barra Vertical Separadora */}
+            <div className="hidden md:block w-px bg-outline-variant/20 h-[calc(100%-2rem)] mx-auto"></div>
+
+            {/* Coluna da Direita - Localização e Contato */}
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-2 border-b border-outline-variant/10 pb-2">
+                <MapPin className="w-5 h-5 text-secondary" />
+                <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider">Localização e Contato</h3>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Telefone</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Cidade / UF</label>
                   <input 
                     type="text" 
-                    name="phone"
-                    value={formData.phone}
+                    name="city"
+                    required
+                    value={formData.city}
                     onChange={handleChange}
-                    className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 pl-10 pr-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all" 
-                    placeholder="(11) 99999-9999" 
+                    className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 px-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all" 
+                    placeholder="São Paulo / SP" 
                   />
                 </div>
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">E-mail de Contato</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-                  <input 
-                    type="email" 
-                    name="email"
-                    value={formData.email}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Telefone</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                    <input 
+                      type="text" 
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 pl-10 pr-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all" 
+                      placeholder="(11) 99999-9999" 
+                    />
+                  </div>
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">E-mail de Contato</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                    <input 
+                      type="email" 
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 pl-10 pr-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all" 
+                      placeholder="contato@fornecedor.com" 
+                    />
+                  </div>
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Endereço Completo</label>
+                  <textarea 
+                    name="address"
+                    value={formData.address}
                     onChange={handleChange}
-                    className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 pl-10 pr-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all" 
-                    placeholder="contato@fornecedor.com" 
+                    rows={3}
+                    className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 px-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all resize-none" 
+                    placeholder="Rua Exemplo, 123 - Bairro - CEP 00000-000" 
                   />
                 </div>
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Endereço Completo</label>
-                <textarea 
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  rows={3}
-                  className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 px-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all resize-none" 
-                  placeholder="Rua Exemplo, 123 - Bairro - CEP 00000-000" 
-                />
               </div>
             </div>
-          </div>
+            {/* Fim Coluna Direita */}
 
+          </div>
+          {/* Fim flex row */}
+
+          {/* Botões de Ação */}
           <div className="pt-6 border-t border-outline-variant/10 flex justify-end gap-4">
             <button 
               type="button" 
@@ -223,6 +234,7 @@ export function SupplierModal({ isOpen, onClose, initialData }: SupplierModalPro
               {initialData ? 'ATUALIZAR PARCEIRO' : 'CADASTRAR PARCEIRO'}
             </button>
           </div>
+
         </form>
       </div>
     </div>

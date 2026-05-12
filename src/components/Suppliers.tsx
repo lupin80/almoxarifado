@@ -13,13 +13,16 @@ import {
 import { cn } from '../lib/utils';
 import { ConfirmationModal } from './ConfirmationModal';
 import { SupplierModal } from './SupplierModal';
+import { useAuth } from './AuthProvider';
+import { getUserPermissions } from '../lib/permissions';
 
 interface SuppliersProps {
   searchQuery?: string;
 }
 
 export function Suppliers({ searchQuery }: SuppliersProps) {
-  const isAdmin = true; // Autenticação removida, liberando acesso total
+  const { user } = useAuth();
+  const permissions = getUserPermissions(user);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,7 +126,7 @@ export function Suppliers({ searchQuery }: SuppliersProps) {
           <h1 className="text-4xl font-black text-on-surface tracking-tight uppercase mb-2 font-headline">Gestão de Fornecedores</h1>
           <p className="text-on-surface-variant">Visualize e gerencie seu ecossistema de parceiros logísticos e industriais.</p>
         </div>
-        {isAdmin && (
+        {permissions.canCreateSuppliers && (
           <button 
             onClick={() => setIsModalOpen(true)}
             className="bg-gradient-to-r from-secondary to-secondary-container text-on-secondary px-8 py-4 rounded-sm font-headline font-extrabold text-sm tracking-widest uppercase transition-transform hover:scale-[1.02] active:scale-95 shadow-lg flex items-center gap-3"
@@ -210,7 +213,7 @@ export function Suppliers({ searchQuery }: SuppliersProps) {
                         >
                           <Edit className="w-4 h-4" />
                         </button>
-                        {isAdmin && (
+                        {permissions.canDeleteSuppliers && (
                           <button 
                             onClick={() => handleDelete(s.id)}
                             className="text-on-surface-variant hover:text-tertiary transition-colors p-1"

@@ -10,6 +10,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { resolveProductImageUrl } from '../lib/images';
 import { ConfirmationModal } from './ConfirmationModal';
 
 interface DeletedItemsProps {
@@ -165,7 +166,7 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-surface-container-highest rounded-lg overflow-hidden grayscale opacity-60">
-                          <img src={p.image || 'https://picsum.photos/seed/product/100/100'} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          <img src={resolveProductImageUrl(p.image)} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         </div>
                         <span className="font-bold text-on-surface">{p.name}</span>
                       </div>

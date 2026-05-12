@@ -32,11 +32,9 @@ export function MovementForm() {
     quantity: ''
   });
   const [status, setStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
-
   const [filter, setFilter] = useState<'all' | 'entry' | 'exit' | 'transfer' | 'product_transfer'>('all');
 
   useEffect(() => {
-    // Update defaults when type changes
     setFormData(prev => {
       if (prev.type === 'exit') {
         const currentDestValid = destinations.some(d => d.name === prev.destination);
@@ -61,22 +59,15 @@ export function MovementForm() {
           fetch('http://localhost:3000/api/movements'),
           fetch('http://localhost:3000/api/destinations')
         ]);
-
-        const prods = await prodRes.json();
-        const moves = await moveRes.json();
-        const dests = await destRes.json();
-
-        setProducts(prods);
-        setMovements(moves);
-        setDestinations(dests);
+        setProducts(await prodRes.json());
+        setMovements(await moveRes.json());
+        setDestinations(await destRes.json());
       } catch (error) {
         console.error("Erro ao conectar com a API SQLite:", error);
         setStatus({ type: 'error', message: 'Não foi possível conectar ao servidor local.' });
       }
     };
-
     fetchData();
-    // Opcional: Polling simples a cada 5 segundos para simular tempo real
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -89,7 +80,6 @@ export function MovementForm() {
   const handleAddDestination = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newDestName.trim()) return;
-    
     try {
       const response = await fetch('http://localhost:3000/api/destinations', {
         method: 'POST',
@@ -128,14 +118,12 @@ export function MovementForm() {
 
     setLoading(true);
     try {
-      // Sanitização básica antes do envio
       const response = await fetch('http://localhost:3000/api/movements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           quantity: qty,
-          // Garante que campos vazios sejam nulos para o SQLite
           targetProductId: formData.targetProductId || null,
           origin: formData.origin || 'Almoxarifado Geral',
           destination: formData.destination || 'Almoxarifado Geral'
@@ -143,10 +131,7 @@ export function MovementForm() {
       });
 
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao processar movimentação');
-      }
+      if (!response.ok) throw new Error(result.error || 'Erro ao processar movimentação');
 
       setStatus({ type: 'success', message: 'Movimentação registrada e estoque atualizado com sucesso!' });
       setFormData(prev => ({ ...prev, quantity: '', productId: '', targetProductId: '' }));
@@ -166,11 +151,14 @@ export function MovementForm() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Origem e Destino são desabilitados apenas no tipo 'entry' (entrada) e 'product_transfer'
+  const isOriginDisabled = formData.type === 'entry' || formData.type === 'product_transfer';
+  const isDestinationDisabled = formData.type === 'entry' || formData.type === 'product_transfer';
+
   return (
     <section className="flex-1 overflow-y-auto pb-24 md:pb-6 p-4 md:p-8 lg:p-12 bg-surface">
       <div className="max-w-[1800px] mx-auto">
         <div className="grid grid-cols-1 gap-8 lg:gap-12 items-start">
-          {/* Left Column: Header and Form */}
           <div className="lg:col-span-full space-y-8">
             <div className="animate-in fade-in slide-in-from-left duration-700">
               <span className="text-secondary font-bold text-[10px] md:text-xs uppercase tracking-[0.2em] block mb-2">Registro de Inventário</span>
@@ -185,7 +173,9 @@ export function MovementForm() {
                   <Info className="w-5 h-5 text-secondary" />
                   Detalhes da Operação
                 </h3>
+
                 <div className="space-y-6">
+                  {/* Tipo de Movimento */}
                   <div className="space-y-3">
                     <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Tipo de Movimento</label>
                     <div className="flex flex-row bg-surface-container-highest p-1 rounded-xl gap-1">
@@ -199,8 +189,7 @@ export function MovementForm() {
                             : "text-on-surface-variant hover:bg-surface-bright"
                         )}
                       >
-                        <ArrowUpRight className="w-4 h-4" />
-                        Saída
+                        <ArrowUpRight className="w-4 h-4" /> Saída
                       </button>
                       <button 
                         type="button"
@@ -212,8 +201,7 @@ export function MovementForm() {
                             : "text-on-surface-variant hover:bg-surface-bright"
                         )}
                       >
-                        <RefreshCcw className="w-4 h-4" />
-                        Transf.
+                        <RefreshCcw className="w-4 h-4" /> Transf.
                       </button>
                       <button 
                         type="button"
@@ -225,13 +213,15 @@ export function MovementForm() {
                             : "text-on-surface-variant hover:bg-surface-bright"
                         )}
                       >
-                        <ArrowRightLeft className="w-4 h-4" />
-                        Entre Prods.
+                        <ArrowRightLeft className="w-4 h-4" /> Entre Prods.
                       </button>
                     </div>
                   </div>
 
+                  {/* Campos */}
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+
+                    {/* Produto de Origem */}
                     <div className={cn(
                       "space-y-2",
                       formData.type === 'product_transfer' ? "lg:col-span-3" : "lg:col-span-4"
@@ -255,6 +245,7 @@ export function MovementForm() {
                       </div>
                     </div>
 
+                    {/* Produto de Destino (só no product_transfer) */}
                     {formData.type === 'product_transfer' && (
                       <div className="space-y-2 lg:col-span-3 animate-in fade-in zoom-in duration-300">
                         <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Produto de Destino</label>
@@ -277,55 +268,85 @@ export function MovementForm() {
                       </div>
                     )}
 
+                    {/* Origem + Destino */}
                     <div className={cn(
                       "grid grid-cols-2 gap-4",
                       formData.type === 'product_transfer' ? "lg:col-span-4" : "lg:col-span-5"
                     )}>
+                      {/* ORIGEM — agora é select igual ao destino */}
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Origem</label>
                         <div className="relative">
                           <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-4 h-4" />
-                          <input 
-                            type="text" 
+                          <select
                             name="origin"
-                            disabled={formData.type === 'entry' || formData.type === 'product_transfer'}
+                            disabled={isOriginDisabled}
                             value={formData.origin}
                             onChange={handleChange}
-                            className="w-full bg-surface-container-highest/50 border-none rounded-lg pl-12 pr-4 py-3 text-sm text-on-surface-variant disabled:cursor-not-allowed" 
-                          />
+                            className={cn(
+                              "w-full bg-surface-container-highest border-none rounded-lg pl-12 pr-10 py-3 text-sm text-on-surface appearance-none focus:ring-1 focus:ring-secondary/40",
+                              isOriginDisabled && "text-on-surface-variant cursor-not-allowed opacity-60"
+                            )}
+                          >
+                            {isOriginDisabled ? (
+                              <option value="Almoxarifado Geral">Almoxarifado Geral</option>
+                            ) : (
+                              <>
+                                <option value="">Selecionar origem...</option>
+                                <option value="Almoxarifado Geral">Almoxarifado Geral</option>
+                                {destinations
+                                  .filter(d => d.name !== 'Almoxarifado Geral')
+                                  .map(d => (
+                                    <option key={d.id} value={d.name}>{d.name}</option>
+                                  ))
+                                }
+                              </>
+                            )}
+                          </select>
+                          {!isOriginDisabled && (
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none w-4 h-4" />
+                          )}
                         </div>
                       </div>
+
+                      {/* DESTINO */}
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Destino</label>
                         <div className="relative">
                           <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant w-4 h-4" />
                           <select 
                             name="destination"
-                            disabled={formData.type === 'entry' || formData.type === 'product_transfer'}
+                            disabled={isDestinationDisabled}
                             value={formData.destination}
                             onChange={handleChange}
                             className={cn(
                               "w-full bg-surface-container-highest border-none rounded-lg pl-12 pr-10 py-3 text-sm text-on-surface appearance-none focus:ring-1 focus:ring-secondary/40",
-                              (formData.type === 'entry' || formData.type === 'product_transfer') && "text-on-surface-variant cursor-not-allowed"
+                              isDestinationDisabled && "text-on-surface-variant cursor-not-allowed opacity-60"
                             )}
                           >
-                            {formData.type === 'entry' || formData.type === 'product_transfer' ? (
+                            {isDestinationDisabled ? (
                               <option value="Almoxarifado Geral">Almoxarifado Geral</option>
                             ) : (
                               <>
                                 <option value="">Selecionar destino...</option>
                                 <option value="Almoxarifado Geral">Almoxarifado Geral</option>
-                                {destinations.filter(d => d.name !== 'Almoxarifado Geral').map(d => (
-                                  <option key={d.id} value={d.name}>{d.name}</option>
-                                ))}
+                                {destinations
+                                  .filter(d => d.name !== 'Almoxarifado Geral')
+                                  .map(d => (
+                                    <option key={d.id} value={d.name}>{d.name}</option>
+                                  ))
+                                }
                               </>
                             )}
                           </select>
-                          {formData.type !== 'entry' && formData.type !== 'product_transfer' && <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none w-4 h-4" />}
+                          {!isDestinationDisabled && (
+                            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none w-4 h-4" />
+                          )}
                         </div>
                       </div>
                     </div>
 
+                    {/* Quantidade */}
                     <div className={cn(
                       "space-y-2",
                       formData.type === 'product_transfer' ? "lg:col-span-2" : "lg:col-span-3"
@@ -373,7 +394,6 @@ export function MovementForm() {
                       {status.message}
                     </div>
                   )}
-
                   <button 
                     type="submit" 
                     disabled={loading}
@@ -387,7 +407,7 @@ export function MovementForm() {
             </form>
           </div>
 
-          {/* Right Column: Movement History Section */}
+          {/* Histórico */}
           <div className="lg:col-span-full space-y-6 animate-in fade-in slide-in-from-right duration-700 delay-300">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h3 className="text-xl md:text-2xl font-black font-headline tracking-tight text-on-surface">Histórico de Movimentações</h3>
@@ -463,9 +483,7 @@ export function MovementForm() {
                                 <p className="text-[10px] text-on-surface-variant font-mono mt-0.5">{product?.sku || 'N/A'}</p>
                               </div>
                             </td>
-                            <td className="px-6 py-3 font-mono text-sm font-black text-on-surface text-right">
-                              {m.quantity}
-                            </td>
+                            <td className="px-6 py-3 font-mono text-sm font-black text-on-surface text-right">{m.quantity}</td>
                             <td className="px-6 py-3">
                               <div className="flex items-center gap-2 text-[10px] font-bold text-on-surface-variant">
                                 <span className="truncate max-w-[80px]">{m.origin}</span>
@@ -489,7 +507,7 @@ export function MovementForm() {
         </div>
       </div>
 
-      {/* Destination Modal */}
+      {/* Modal de novo destino */}
       {isDestModalOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-surface-container-low w-full max-w-md rounded-2xl shadow-2xl border border-white/5 overflow-hidden animate-in zoom-in-95 duration-200">
@@ -501,7 +519,7 @@ export function MovementForm() {
             </div>
             <form onSubmit={handleAddDestination} className="p-6 space-y-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nome do Destino</label>
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nome do Destino / Origem</label>
                 <input 
                   type="text" 
                   autoFocus

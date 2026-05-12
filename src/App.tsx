@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Sidebar, MobileNav, TopBar, View } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { InventoryList } from './components/InventoryList';
@@ -14,40 +14,128 @@ import { ProductDetail } from './components/ProductDetail';
 import { Login } from './components/Login';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { canAccessView } from './lib/permissions';
 
+const LAST_VIEW_STORAGE_KEY = 'vault_last_view';
+const DEFAULT_VIEW: View = 'dashboard';
+const PRODUCT_DETAIL_VIEW: View = 'product-detail';
+const PRODUCT_LIST_VIEW: View = 'products';
+const VALID_VIEWS: readonly View[] = [
+  'dashboard',
+  'inventory',
+  'products',
+  'movements',
+  'suppliers',
+  'product-detail',
+  'deleted-items',
+  'settings',
+  'support',
+  'reports',
+  'abc-analysis',
+];
 
+function isView(value: string): value is View {
+  return VALID_VIEWS.includes(value as View);
+}
 
-// ─── App interno (dentro do AuthProvider) ────────────────────────────────────
+function renderCurrentView(
+  currentView: View,
+  searchQuery: string,
+  selectedProductId: string | null,
+  onViewChange: (view: View) => void,
+  onViewProduct: (id: string) => void,
+) {
+  const searchProps = { searchQuery };
+
+  switch (currentView) {
+    case 'dashboard':
+      return (
+        <Dashboard
+          onViewChange={onViewChange}
+          onViewProduct={onViewProduct}
+        />
+      );
+    case 'inventory':
+      return (
+        <InventoryList
+          {...searchProps}
+          onViewProduct={onViewProduct}
+        />
+      );
+    case 'products':
+      return (
+        <ProductCatalog
+          {...searchProps}
+          onViewProduct={onViewProduct}
+        />
+      );
+    case 'movements':
+      return <MovementForm />;
+    case 'suppliers':
+      return <Suppliers {...searchProps} />;
+    case 'abc-analysis':
+      return <ABCAnalysis />;
+    case 'reports':
+      return <Reports {...searchProps} />;
+    case 'deleted-items':
+      return <DeletedItems {...searchProps} />;
+    case 'settings':
+      return <Settings />;
+    case 'support':
+      return <Support />;
+    case PRODUCT_DETAIL_VIEW:
+      return selectedProductId ? (
+        <ProductDetail
+          productId={selectedProductId}
+          onBack={() => onViewChange(PRODUCT_LIST_VIEW)}
+        />
+      ) : null;
+    default:
+      return (
+        <Dashboard
+          onViewChange={onViewChange}
+          onViewProduct={onViewProduct}
+        />
+      );
+  }
+}
+
 function AppInner() {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [currentView, setCurrentView] = useState<View>(DEFAULT_VIEW);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
-  // Restaura a última view salva
   useEffect(() => {
-    const saved = localStorage.getItem('vault_last_view') as View | null;
-    if (saved) setCurrentView(saved);
+    const savedView = localStorage.getItem(LAST_VIEW_STORAGE_KEY);
+    if (savedView && isView(savedView)) {
+      setCurrentView(savedView);
+    }
   }, []);
 
-  // Salva a view atual
   useEffect(() => {
-    localStorage.setItem('vault_last_view', currentView);
+    localStorage.setItem(LAST_VIEW_STORAGE_KEY, currentView);
   }, [currentView]);
 
+  useEffect(() => {
+    if (user && !canAccessView(currentView, user)) {
+      setCurrentView(DEFAULT_VIEW);
+    }
+  }, [currentView, user]);
+
   const handleViewChange = (view: View) => {
+    if (user && !canAccessView(view, user)) {
+      setCurrentView(DEFAULT_VIEW);
+      return;
+    }
+
     setCurrentView(view);
     setSearchQuery('');
   };
 
   const handleProductDetail = (id: string) => {
     setSelectedProductId(id);
-    setCurrentView('product-detail');
-  };
-
-  const handleLogin = (userData: any) => {
-    // AuthProvider já gerencia o estado — apenas força re-render
-    window.location.reload();
+    setCurrentView(PRODUCT_DETAIL_VIEW);
   };
 
   if (loading) {
@@ -59,59 +147,8 @@ function AppInner() {
   }
 
   if (!user) {
-    return <Login onLogin={handleLogin} />;
+    return <Login />;
   }
-
-  const renderView = () => {
-    switch (currentView) {
-      case 'dashboard':
-        return (
-            <Dashboard
-            onViewChange={handleViewChange}
-            onViewProduct={handleProductDetail}
-          />
-        );
-      case 'inventory':
-        return (
-          <InventoryList
-            searchQuery={searchQuery}
-            onViewProduct={handleProductDetail}
-          />
-        );
-      case 'products':
-        return (
-          <ProductCatalog
-            searchQuery={searchQuery}
-            onViewProduct={handleProductDetail}
-          />
-        );
-      case 'movements':
-        return <MovementForm />;
-      case 'suppliers':
-        return <Suppliers searchQuery={searchQuery} />;
-      case 'abc-analysis':
-        return <ABCAnalysis />;
-      case 'reports':
-        return <Reports searchQuery={searchQuery} />;
-      case 'deleted-items':
-        return <DeletedItems searchQuery={searchQuery} />;
-      case 'settings':
-      case 'users':
-        // Usuários está embutido no Settings (seção admin)
-        return <Settings />;
-      case 'support':
-        return <Support />;
-      case 'product-detail':
-        return selectedProductId ? (
-          <ProductDetail
-            productId={selectedProductId}
-            onBack={() => setCurrentView('products')}
-          />
-        ) : null;
-      default:
-        return <Dashboard onViewChange={handleViewChange} onViewProduct={handleProductDetail} />;
-    }
-  };
 
   return (
     <div className="flex h-screen bg-surface overflow-hidden">
@@ -124,7 +161,13 @@ function AppInner() {
         />
         <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           <ErrorBoundary>
-            {renderView()}
+            {renderCurrentView(
+              currentView,
+              searchQuery,
+              selectedProductId,
+              handleViewChange,
+              handleProductDetail,
+            )}
           </ErrorBoundary>
         </main>
       </div>
@@ -133,7 +176,6 @@ function AppInner() {
   );
 }
 
-// ─── App raiz ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <AuthProvider>

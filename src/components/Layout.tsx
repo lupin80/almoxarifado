@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   Package,
@@ -19,10 +19,16 @@ import {
   X,
   AlertTriangle,
   PackagePlus,
-  User
+  User,
+  Camera,
+  LoaderCircle
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useAuth } from './AuthProvider';
+import { canAccessView, getUserPermissions } from '../lib/permissions';
+import { listProducts } from '../services/productService';
+import { uploadAvatar } from '../services/userService';
+
 
 export type View = 'dashboard' | 'inventory' | 'products' | 'movements' | 'suppliers' | 'product-detail' | 'deleted-items' | 'settings' | 'support' | 'reports' | 'abc-analysis';
 
@@ -31,12 +37,23 @@ interface SidebarProps {
   onViewChange: (view: View) => void;
 }
 
+interface NavItem {
+  id: View;
+  label: string;
+  icon: typeof LayoutDashboard;
+}
+
 /* user passed as prop if needed */
 
 export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   const { user } = useAuth();
+  const permissions = getUserPermissions(user);
 
-  const navItems = [
+  const deletedItemsNav: NavItem[] = permissions.canViewDeletedItems
+    ? [{ id: 'deleted-items', label: 'Excluídos', icon: Trash2 }]
+    : [];
+
+  const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'inventory', label: 'Estoque', icon: Package },
     { id: 'products', label: 'Produtos', icon: Layers },
@@ -44,8 +61,8 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'suppliers', label: 'Fornecedores', icon: Factory },
     { id: 'abc-analysis', label: 'Curva ABC', icon: TrendingUp },
     { id: 'reports', label: 'Relatórios', icon: FileText },
-{ id: 'deleted-items', label: 'Excluídos', icon: Trash2 },
-  ] as const;
+    ...deletedItemsNav,
+  ];
 
   return (
     <aside className="hidden md:flex flex-col h-screen w-64 bg-surface-container-low py-6 border-r border-outline-variant/10 fixed left-0 top-0 z-50">
@@ -84,18 +101,20 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
       </nav>
 
       <div className="mt-auto px-2 space-y-1">
-        <button 
-          onClick={() => onViewChange('settings')}
-          className={cn(
-            "w-full flex items-center gap-3 px-4 py-2 transition-all rounded-md",
-            currentView === 'settings' 
-              ? "text-secondary bg-secondary/10 font-bold" 
-              : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-          )}
-        >
-          <Settings className="w-5 h-5" />
-          <span className="text-sm">Configurações</span>
-        </button>
+        {permissions.canAccessSettings && (
+          <button 
+            onClick={() => onViewChange('settings')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-2 transition-all rounded-md",
+              currentView === 'settings' 
+                ? "text-secondary bg-secondary/10 font-bold" 
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+            )}
+          >
+            <Settings className="w-5 h-5" />
+            <span className="text-sm">Configurações</span>
+          </button>
+        )}
         <button 
           onClick={() => onViewChange('support')}
           className={cn(
@@ -161,12 +180,16 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
   searchQuery?: string,
   onSearchChange?: (query: string) => void
 }) {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
+  const permissions = getUserPermissions(user);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [stats, setStats] = useState({ lowStock: 0, criticalStock: 0, totalProducts: 0 });
   const [loading, setLoading] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     fetchNotifications();
@@ -174,8 +197,8 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/products');
-      const products = await response.json();
+      const products = await listProducts();
+
 
       const lowStock = products.filter((p: any) => {
         const pct = (p.stock / p.maxStock) * 100;
@@ -223,6 +246,66 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
 
   const clearSearch = () => {
     onSearchChange?.('');
+  };
+
+  const avatarSrc = (() => {
+    if (avatarFailed || !user?.image) {
+      return user ? `https://picsum.photos/seed/${user.email}/100/100` : 'https://picsum.photos/seed/user/100/100';
+    }
+
+    if (user.image.startsWith('data:')) {
+      return user.image;
+    }
+
+    if (user.image.startsWith('http://localhost:3000/uploads/')) {
+      return user.image.replace('http://localhost:3000', '');
+    }
+
+    if (user.image.startsWith('http') || user.image.startsWith('/uploads/')) {
+      return user.image;
+    }
+
+    return `/uploads/${user.image.replace(/^\/+/, '')}`;
+  })();
+
+  const handleAvatarClick = () => {
+    if (!user || uploadingAvatar) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Selecione uma imagem válida.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 5MB.');
+      event.target.value = '';
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setAvatarFailed(false);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('email', user.email);
+
+      const result = await uploadAvatar(user.id, file);
+      if (result?.user) updateUser(result.user);
+    } catch (error) {
+      console.error('Avatar upload failed:', error);
+      alert(error instanceof Error ? error.message : 'Falha ao atualizar foto de perfil.');
+    } finally {
+      setUploadingAvatar(false);
+      event.target.value = '';
+    }
   };
 
   const formatDate = () => {
@@ -339,13 +422,15 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
             </div>
 
             {/* Deleted Items */}
-            <button
-              onClick={() => onViewChange?.('deleted-items')}
-              className="hidden md:block p-2 text-on-surface-variant hover:bg-surface-bright transition-colors rounded-full"
-              title="Itens Excluídos"
-            >
-              <History className="w-6 h-6" />
-            </button>
+            {permissions.canViewDeletedItems && (
+              <button
+                onClick={() => onViewChange?.('deleted-items')}
+                className="hidden md:block p-2 text-on-surface-variant hover:bg-surface-bright transition-colors rounded-full"
+                title="Itens Excluídos"
+              >
+                <History className="w-6 h-6" />
+              </button>
+            )}
 
             {/* Divider */}
             <div className="h-6 md:h-8 w-px bg-outline-variant/20 mx-1 md:mx-2"></div>
@@ -356,14 +441,35 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
 <p className="text-xs font-bold text-on-surface">{user?.name || 'Usuário'}</p>
 <p className="text-[10px] text-on-surface-variant uppercase tracking-tighter">{user?.email || ''}</p>
               </div>
-              <div className="w-7 h-7 md:w-9 md:h-9 rounded-full bg-surface-container-highest overflow-hidden ring-2 ring-surface-container-highest">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+              <button
+                type="button"
+                onClick={handleAvatarClick}
+                disabled={!user || uploadingAvatar}
+                className="relative w-7 h-7 md:w-9 md:h-9 rounded-full bg-surface-container-highest overflow-hidden ring-2 ring-surface-container-highest group"
+                title="Trocar foto de perfil"
+              >
                 <img
-src={user ? `https://picsum.photos/seed/${user.email}/100/100` : "https://picsum.photos/seed/user/100/100"}
+                  src={avatarSrc}
                   alt="Profile"
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
+                  onError={() => setAvatarFailed(true)}
                 />
-              </div>
+                <span className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  {uploadingAvatar ? (
+                    <LoaderCircle className="w-3 h-3 md:w-4 md:h-4 text-white animate-spin" />
+                  ) : (
+                    <Camera className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                  )}
+                </span>
+              </button>
               <button
                 onClick={handleLogout}
                 className="p-1.5 md:p-2 text-on-surface-variant hover:text-tertiary transition-colors rounded-full"

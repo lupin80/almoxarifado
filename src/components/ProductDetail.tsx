@@ -18,9 +18,14 @@ import {
   Check,
   RefreshCw,
   ChevronRight,
-  Package
+  Package,
+  ZoomIn,
+  X
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { resolveProductImageUrl } from '../lib/images';
+import { useAuth } from './AuthProvider';
+import { getUserPermissions } from '../lib/permissions';
 
 const CheckMemo = React.memo(Check);
 const CopyMemo = React.memo(Copy);
@@ -63,6 +68,8 @@ function DetailSkeleton() {
 }
 
 export function ProductDetail({ productId, onBack }: ProductDetailProps) {
+  const { user } = useAuth();
+  const permissions = getUserPermissions(user);
   const [product, setProduct] = useState<any>(null);
   const [movements, setMovements] = useState<any[]>([]);
   const [allProducts, setAllProducts] = useState<any[]>([]);
@@ -74,8 +81,8 @@ export function ProductDetail({ productId, onBack }: ProductDetailProps) {
   const [selectedMovementId, setSelectedMovementId] = useState<string | null>(null);
   const [copiedSku, setCopiedSku] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [isImageZoomOpen, setIsImageZoomOpen] = useState(false);
   const prevModalOpen = useRef(false);
-  const isAdmin = true;
 
   const fetchData = useCallback(async () => {
     if (!productId) return;
@@ -217,14 +224,9 @@ const copySku = useCallback(async () => {
   const stockNum = Number(product.stock) || 0;
   const maxStockNum = Number(product.maxStock) || 0;
   const stockLow = maxStockNum > 0 && stockNum < maxStockNum * 0.2;
-  const imgSrc =
-    imageFailed || !product.image
-      ? 'https://picsum.photos/seed/product/600/600'
-      : product.image.startsWith('data:')
-        ? product.image
-        : product.image.startsWith('http')
-          ? product.image
-          : `http://localhost:3000${product.image.startsWith('/') ? '' : '/'}${product.image}`;
+  const imgSrc = imageFailed
+    ? 'https://picsum.photos/seed/product/600/600'
+    : resolveProductImageUrl(product.image, 'https://picsum.photos/seed/product/600/600');
 
   const renderMovementRow = (m: any) => {
     const isOutgoing = m.productId === productId;
@@ -345,7 +347,7 @@ const copySku = useCallback(async () => {
               <Edit className="w-4 h-4 shrink-0" />
               Editar
             </button>
-            {isAdmin && (
+            {permissions.canDeleteProducts && (
               <button
                 type="button"
                 onClick={handleDelete}
@@ -403,14 +405,25 @@ const copySku = useCallback(async () => {
                 Visão geral do ativo
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="aspect-[4/3] md:aspect-[3/4] bg-surface-container-highest relative flex items-center justify-center overflow-hidden md:border-r border-outline-variant/10 min-h-64 sm:min-h-72 md:min-h-[28rem]">
-                  <img
-                    src={imgSrc}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                    onError={() => setImageFailed(true)}
-                  />
+                <div className="aspect-[4/3] md:aspect-[3/4] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.08),_transparent_55%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.08))] relative flex items-center justify-center overflow-hidden md:border-r border-outline-variant/10 min-h-64 sm:min-h-72 md:min-h-[28rem] max-h-[32rem] p-4 sm:p-6">
+                  <button
+                    type="button"
+                    onClick={() => setIsImageZoomOpen(true)}
+                    className="group/image relative flex h-full w-full items-center justify-center rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary"
+                    aria-label="Ampliar imagem do produto"
+                  >
+                    <img
+                      src={imgSrc}
+                      alt=""
+                      className="max-w-full max-h-full object-contain rounded-xl"
+                      referrerPolicy="no-referrer"
+                      onError={() => setImageFailed(true)}
+                    />
+                    <span className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded-full bg-surface/85 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-on-surface opacity-0 transition-opacity group-hover/image:opacity-100">
+                      <ZoomIn className="h-3.5 w-3.5 text-secondary" />
+                      Ampliar
+                    </span>
+                  </button>
                   <div className="absolute top-4 left-4 right-4 flex flex-wrap gap-2">
                     <div className="bg-surface/90 backdrop-blur-md px-3 py-2 rounded-lg border border-white/10 flex items-center gap-2 min-w-0">
                       <div className="min-w-0">
@@ -727,6 +740,28 @@ const copySku = useCallback(async () => {
         confirmText="Excluir"
         cancelText="Cancelar"
       />
+      {isImageZoomOpen && (
+        <div
+          className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-sm p-4 md:p-8 flex items-center justify-center"
+          onClick={() => setIsImageZoomOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setIsImageZoomOpen(false)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-surface/80 text-on-surface hover:bg-surface-container transition-colors"
+            aria-label="Fechar zoom da imagem"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={imgSrc}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+            referrerPolicy="no-referrer"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

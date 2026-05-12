@@ -242,8 +242,8 @@ export function Reports({ searchQuery }: ReportsProps) {
         alternateRowStyles: {
           fillColor: [250, 250, 250]
         },
-        willDrawRow: (data) => {
-          if (data.row.index === tableData.length) {
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.row.index === tableData.length) {
             data.cell.styles.fontStyle = 'bold';
             data.cell.styles.fillColor = [230, 240, 230];
             data.cell.styles.textColor = [19, 19, 19];

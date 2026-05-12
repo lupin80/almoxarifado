@@ -88,7 +88,7 @@ export function ABCAnalysis() {
         <div className="bg-surface-container-low p-6 rounded-2xl border border-white/5 shadow-xl flex flex-col items-center">
           <h3 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4">Distribuição por Quantidade</h3>
           <div className="h-48 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+<ResponsiveContainer width="100%" height="100%" minHeight={200}>
               <PieChart>
                 <Pie data={pieData} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                   {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}

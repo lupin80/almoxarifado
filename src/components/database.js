@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import bcrypt from 'bcrypt';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -44,6 +45,7 @@ db.exec(`
     email TEXT NOT NULL UNIQUE,
     senha TEXT NOT NULL,
     role TEXT CHECK(role IN ('admin', 'operador', 'usuario')) DEFAULT 'usuario',
+    image TEXT,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -97,6 +99,35 @@ db.exec(`
   );
 `);
 
+try {
+  const userColumns = db.prepare("PRAGMA table_info(usuarios)").all().map(col => col.name);
+  if (!userColumns.includes('image')) {
+    db.exec('ALTER TABLE usuarios ADD COLUMN image TEXT');
+  }
+} catch (e) {
+  console.error('Falha ao garantir coluna image em usuarios:', e);
+}
+
+try {
+  db.prepare(`
+    UPDATE usuarios
+    SET image = REPLACE(image, 'http://localhost:3000', '')
+    WHERE image LIKE 'http://localhost:3000/uploads/%'
+  `).run();
+} catch (e) {
+  console.error('Falha ao normalizar imagens de usuarios:', e);
+}
+
+try {
+  db.prepare(`
+    UPDATE products
+    SET image = REPLACE(image, 'http://localhost:3000', '')
+    WHERE image LIKE 'http://localhost:3000/uploads/%'
+  `).run();
+} catch (e) {
+  console.error('Falha ao normalizar imagens de produtos:', e);
+}
+
 // Seed de destinos iniciais caso a tabela esteja vazia
 const checkDest = db.prepare('SELECT count(*) as count FROM destinations').get();
 if (checkDest.count === 0) {
@@ -115,12 +146,27 @@ if (checkCats.count === 0) {
   console.log('Categorias padrão inicializadas no SQLite.');
 }
 
-// Seed de usuário administrador inicial
-const checkUsers = db.prepare('SELECT count(*) as count FROM usuarios').get();
-if (checkUsers.count === 0) {
-  const insertUser = db.prepare('INSERT INTO usuarios (id, name, email, senha, role) VALUES (?, ?, ?, ?, ?)');
-  insertUser.run(uuidv4(), 'Administrador do Sistema', 'admin@vault.com', 'admin123', 'admin');
-  console.log('Usuário admin inicial criado no SQLite. Login: admin@vault.com / Senha: admin123');
+const defaultAdminEmail = 'admin@vault.com';
+const existingAdmin = db.prepare('SELECT id, senha FROM usuarios WHERE email = ?').get(defaultAdminEmail);
+
+if (!existingAdmin) {
+  const senhaHash = bcrypt.hashSync('admin123', 12);
+  const adminId = uuidv4();
+  db.prepare('INSERT INTO usuarios (id, name, email, senha, role) VALUES (?, ?, ?, ?, ?)').run(
+    adminId,
+    'Administrador do Sistema',
+    defaultAdminEmail,
+    senhaHash,
+    'admin',
+  );
+  console.log(`Admin user created with HASH: ${adminId.slice(0, 8)}... Login: admin@vault.com / admin123`);
+} else {
+  const looksHashed = typeof existingAdmin.senha === 'string' && existingAdmin.senha.startsWith('$2');
+  if (!looksHashed) {
+    const senhaHash = bcrypt.hashSync('admin123', 12);
+    db.prepare('UPDATE usuarios SET senha = ?, role = ? WHERE id = ?').run(senhaHash, 'admin', existingAdmin.id);
+    console.log(`Admin user password upgraded to HASH: ${existingAdmin.id.slice(0, 8)}...`);
+  }
 }
 
 export default db;

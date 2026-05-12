@@ -60,7 +60,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'operator' | 'user';
+  role: 'admin' | 'operator' | 'user' | 'operador' | 'usuario';
+  image?: string | null;
   createdAt?: string;
 }
 

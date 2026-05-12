@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { cn } from '../lib/utils';
 import type { Product, Movement } from '../types/api';
 import type { View } from './Layout';
+import { resolveProductImageUrl } from '../lib/images';
 
 interface DashboardProps {
   onViewChange?: (view: View) => void;
@@ -214,7 +215,7 @@ export function Dashboard({ onViewChange, onViewProduct }: DashboardProps) {
           </div>
           
           <div className="bg-surface-container-low p-4 md:p-6 rounded-xl h-64 md:h-80">
-            <ResponsiveContainer width="100%" height="100%">
+<ResponsiveContainer width="100%" height="100%" minHeight={250}>
               <BarChart data={displayChartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#353534" />
                 <XAxis 
@@ -311,7 +312,7 @@ export function Dashboard({ onViewChange, onViewProduct }: DashboardProps) {
                 itemsNeedingAttention.map((p) => (
                   <TableRow 
                     key={p.id}
-                    image={p.image || "https://picsum.photos/seed/product/100/100"}
+                    image={resolveProductImageUrl(p.image)}
                     name={p.name}
                     sku={p.sku}
                     status={(Number(p.stock) || 0) === 0 ? "Esgotado" : "Estoque Baixo"}

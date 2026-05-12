@@ -1,14 +1,44 @@
-# TODO: Fix ReferenceError: user is not defined in Layout.tsx
+# TODO - Refactor API/Fetch para Services
 
-## Plan Breakdown
-- [ ] Step 1: Edit src/components/Layout.tsx to add missing `useAuth()` call in Sidebar component
-- [ ] Step 2: Add safe fallbacks for user properties in TopBar component  
-- [ ] Step 3: Test the fix by reloading the dev server (error should be gone, Sidebar admin button conditional)
-- [ ] Step 4: Verify Dashboard renders properly without crashes
+## Etapa 1 — Base de comunicação
+- [ ] Criar `src/lib/apiClient.ts` (wrapper do fetch com baseURL + parse de erro)
+- [ ] Criar `src/services/authService.ts`
+- [ ] Criar `src/services/productService.ts`
+- [ ] Criar `src/services/movementsService.ts`
+- [ ] Criar `src/services/supplierService.ts`
+- [ ] Criar `src/services/categoryService.ts`
+- [ ] Criar `src/services/userService.ts`
 
-## Progress
-- [x] Step 1: Edit src/components/Layout.tsx to add missing `useAuth()` call in Sidebar component
-- [x] Step 2: Add safe fallbacks for user properties in TopBar component  
-- [ ] Step 3: Test the fix by reloading the dev server (error should be gone, Sidebar admin button conditional)
-- [ ] Step 4: Verify Dashboard renders properly without crashes
+## Etapa 2 — Auth e componentes de alto impacto
+- [x] Refatorar `src/components/AuthProvider.tsx` para usar `authService`
+
+- [x] Refatorar `src/components/Login.tsx` para usar `authService`
+
+- [x] Refatorar `src/components/Layout.tsx` (TopBar): buscar produtos/notifications e upload avatar via services
+
+
+## Etapa 3 — Produtos e detalhes
+- [ ] Refatorar `src/components/Dashboard.tsx` para usar services
+- [ ] Refatorar `src/components/InventoryList.tsx` para usar services
+- [ ] Refatorar `src/components/ProductCatalog.tsx` para usar services
+- [ ] Refatorar `src/components/ProductDetail.tsx` para usar services
+- [ ] Refatorar `src/components/ProductModal.tsx` para usar services (inclui upload de imagem + movements)
+
+## Etapa 4 — Movimentos e destinos
+- [ ] Refatorar `src/components/MovementForm.tsx` para usar services
+
+## Etapa 5 — Fornecedores e Categorias
+- [ ] Refatorar `src/components/Suppliers.tsx` para usar services
+- [ ] Refatorar `src/components/SupplierModal.tsx` para usar services
+- [ ] Refatorar `src/components/CategoryManagementModal.tsx` para usar services
+
+## Etapa 6 — Relatórios e lixeira
+- [ ] Refatorar `src/components/Reports.tsx` para usar services
+- [ ] Refatorar `src/components/DeletedItems.tsx` para usar services
+
+## Etapa 7 — Ajustes finais
+- [ ] Refatorar `src/components/ABCAnalysis.tsx` para usar services
+- [ ] Revisar `src/components/FirebaseProvider.tsx` (remover ou deixar como legado se não usado)
+- [ ] Rodar `npm run build` (e `npm run lint` se existir)
+
 

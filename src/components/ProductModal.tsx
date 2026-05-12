@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Info, Receipt, Truck, Package, Upload, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { resolveProductImageUrl } from '../lib/images';
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ export function ProductModal({ isOpen, onClose, initialData }: ProductModalProps
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -91,6 +94,8 @@ export function ProductModal({ isOpen, onClose, initialData }: ProductModalProps
         image: ''
       });
     }
+    setPreviewUrl(null);
+    setImageLoadFailed(false);
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -167,25 +172,44 @@ export function ProductModal({ isOpen, onClose, initialData }: ProductModalProps
 
     if (file.size > 5 * 1024 * 1024) {
       alert("A imagem é muito grande. Máximo 5MB.");
+      e.target.value = '';
       return;
     }
+
+    // Immediate client-side preview
+    const localPreview = URL.createObjectURL(file);
+    setPreviewUrl(localPreview);
+    setImageLoadFailed(false);
+    setFormData(prev => ({ ...prev, image: '' })); // Clear server URL temporarily
 
     const fd = new FormData();
     fd.append('image', file);
 
     try {
+      console.log('Uploading image:', file.name);
       const response = await fetch('http://localhost:3000/api/products/upload-image', {
         method: 'POST',
         body: fd
       });
       const result = await response.json();
-      if (response.ok) {
+      
+      if (response.ok && result.url) {
+        console.log('Upload success, URL:', result.url);
         setFormData(prev => ({ ...prev, image: result.url }));
+        // Keep local preview until server URL loads
       } else {
-        alert(`Erro: ${result.error}`);
+        console.error('Upload failed:', result.error);
+        alert(`Erro no upload: ${result.error || 'Falha desconhecida'}`);
+        URL.revokeObjectURL(localPreview);
+        setPreviewUrl(null);
+        e.target.value = '';
       }
-    } catch (err) {
-      alert("Erro no upload");
+    } catch (err: any) {
+      console.error('Upload network error:', err);
+      alert(`Erro de conexão: ${err.message}`);
+      URL.revokeObjectURL(localPreview);
+      setPreviewUrl(null);
+      e.target.value = '';
     }
   };
 
@@ -299,13 +323,34 @@ export function ProductModal({ isOpen, onClose, initialData }: ProductModalProps
                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Imagem do Ativo</label>
                 <div className="flex flex-col sm:flex-row gap-6 items-start">
                   <div className="relative w-20 h-20 aspect-square rounded-xl bg-surface-container-highest border-2 border-dashed border-outline-variant/30 overflow-hidden shrink-0 flex items-center justify-center group/img transition-all hover:border-secondary/50 shadow-inner">
-                    {formData.image ? (
+                    {(previewUrl || formData.image) && !imageLoadFailed ? (
                       <>
-                        <img src={formData.image} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img 
+                          src={previewUrl || resolveProductImageUrl(formData.image, '')} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover" 
+                          onLoad={() => {
+                            if (previewUrl && formData.image) {
+                              URL.revokeObjectURL(previewUrl);
+                              setPreviewUrl(null);
+                            }
+                          }}
+                          onError={() => {
+                            console.error('Image load failed:', formData.image);
+                            setImageLoadFailed(true);
+                          }}
+                        />
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
                           <button 
                             type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
+                            onClick={() => {
+                              if (previewUrl) {
+                                URL.revokeObjectURL(previewUrl);
+                                setPreviewUrl(null);
+                              }
+                              setImageLoadFailed(false);
+                              setFormData(prev => ({ ...prev, image: '' }));
+                            }}
                             className="p-2 bg-tertiary text-on-tertiary rounded-full hover:scale-110 transition-transform"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -336,16 +381,21 @@ export function ProductModal({ isOpen, onClose, initialData }: ProductModalProps
                         <Upload className="w-4 h-4" />
                         Enviar imagem
                       </button>
-                      {formData.image && (
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
-                          className="px-4 py-2.5 rounded-lg bg-tertiary/10 text-tertiary font-bold text-xs uppercase tracking-widest flex items-center gap-2 border border-tertiary/20 hover:bg-tertiary/20 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Remover
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (previewUrl) {
+                            URL.revokeObjectURL(previewUrl);
+                            setPreviewUrl(null);
+                          }
+                          setImageLoadFailed(false);
+                          setFormData(prev => ({ ...prev, image: '' }));
+                        }}
+                        className="px-4 py-2.5 rounded-lg bg-tertiary/10 text-tertiary font-bold text-xs uppercase tracking-widest flex items-center gap-2 border border-tertiary/20 hover:bg-tertiary/20 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Remover
+                      </button>
                     </div>
                     <p className="text-xs text-on-surface-variant leading-relaxed">
                       PNG/JPG/WebP, até 5MB. A imagem é usada no catálogo e nos detalhes do ativo.

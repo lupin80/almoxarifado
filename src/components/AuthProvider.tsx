@@ -1,16 +1,12 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'operator' | 'user';
-}
+import { User } from '../types/api';
+import { login as loginApi } from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
   login: (credentials: { username: string; password: string }) => Promise<User | null>;
   logout: () => void;
+  updateUser: (user: User) => void;
   loading: boolean;
 }
 
@@ -42,17 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (credentials: { username: string; password: string }) => {
     try {
-      const response = await fetch('http://localhost:3000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
+      const data = await loginApi(credentials);
+      if (!data) throw new Error('Credenciais inválidas');
 
-      if (!response.ok) {
-        throw new Error('Credenciais inválidas');
-      }
-
-      const data = await response.json() as User;
       localStorage.setItem('vault_user', JSON.stringify(data));
       setUser(data);
       return data;
@@ -68,17 +56,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (nextUser: User) => {
+    localStorage.setItem('vault_user', JSON.stringify(nextUser));
+    setUser(nextUser);
+  };
+
   const value = {
     user,
     login,
     logout,
+    updateUser,
     loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

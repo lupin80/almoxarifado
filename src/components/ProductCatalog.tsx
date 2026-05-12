@@ -17,6 +17,9 @@ import { cn } from '../lib/utils';
 import { ProductModal } from './ProductModal';
 import { ConfirmationModal } from './ConfirmationModal';
 import { CategoryManagementModal } from './CategoryManagementModal';
+import { resolveProductImageUrl } from '../lib/images';
+import { useAuth } from './AuthProvider';
+import { getUserPermissions } from '../lib/permissions';
 
 interface ProductCatalogProps {
   onViewProduct?: (id: string) => void;
@@ -24,11 +27,12 @@ interface ProductCatalogProps {
 }
 
 export function ProductCatalog({ onViewProduct, searchQuery }: ProductCatalogProps) {
+  const { user } = useAuth();
+  const permissions = getUserPermissions(user);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
-  const isAdmin = true;
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [products, setProducts] = useState<any[]>([]);
@@ -116,13 +120,15 @@ export function ProductCatalog({ onViewProduct, searchQuery }: ProductCatalogPro
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
-          <button 
-            onClick={() => setIsCategoryModalOpen(true)}
-            className="bg-surface-container-high text-on-surface px-6 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 border border-white/5 hover:bg-surface-bright transition-all"
-          >
-            <List className="w-4 h-4" />
-            Gerenciar Categorias
-          </button>
+          {permissions.canManageCategories && (
+            <button 
+              onClick={() => setIsCategoryModalOpen(true)}
+              className="bg-surface-container-high text-on-surface px-6 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 border border-white/5 hover:bg-surface-bright transition-all"
+            >
+              <List className="w-4 h-4" />
+              Gerenciar Categorias
+            </button>
+          )}
           <button 
             onClick={() => setIsModalOpen(true)}
             className="bg-gradient-to-r from-secondary to-secondary-container text-on-secondary px-6 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-secondary/10 transition-all hover:scale-[1.01] active:scale-95 uppercase tracking-widest"
@@ -152,13 +158,15 @@ export function ProductCatalog({ onViewProduct, searchQuery }: ProductCatalogPro
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-on-surface leading-none mb-2 font-headline">Catálogo de Produtos</h1>
           <p className="text-on-surface-variant font-body text-lg max-w-xl">Gerencie definições mestres de ativos e hierarquias de SKU.</p>
         </div>
-        <button 
-          onClick={() => setIsCategoryModalOpen(true)}
-          className="bg-surface-container-high text-on-surface px-5 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 border border-white/5 hover:bg-surface-bright transition-all"
-        >
-          <List className="w-4 h-4" />
-          Gerenciar Categorias
-        </button>
+        {permissions.canManageCategories && (
+          <button 
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="bg-surface-container-high text-on-surface px-5 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 border border-white/5 hover:bg-surface-bright transition-all"
+          >
+            <List className="w-4 h-4" />
+            Gerenciar Categorias
+          </button>
+        )}
         <button 
           onClick={() => setIsModalOpen(true)}
           className="bg-secondary text-on-secondary px-6 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-secondary/10 transition-all hover:scale-[1.01] active:scale-95 uppercase tracking-widest w-full md:w-auto"
@@ -225,7 +233,7 @@ export function ProductCatalog({ onViewProduct, searchQuery }: ProductCatalogPro
                   >
                     <Edit className="w-4 h-4" />
                   </button>
-                  {isAdmin && (
+                  {permissions.canDeleteProducts && (
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
@@ -253,7 +261,7 @@ export function ProductCatalog({ onViewProduct, searchQuery }: ProductCatalogPro
                   );
                 })()}
                 <div className="aspect-[3/4] max-h-32 bg-surface-container-highest overflow-hidden relative flex items-center justify-center border-b border-outline-variant/5">
-                  <img src={p.image || 'https://picsum.photos/seed/product/400/400'} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
+                  <img src={resolveProductImageUrl(p.image)} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                   {(Number(p.stock) || 0) <= ((Number(p.maxStock) || 0) * 0.2) && (
                     <div className="absolute top-3 left-3 bg-tertiary-container/80 backdrop-blur-md text-on-tertiary-container px-3 py-1 rounded-full text-[10px] font-bold z-10 uppercase">
                       Estoque Baixo
@@ -302,10 +310,12 @@ export function ProductCatalog({ onViewProduct, searchQuery }: ProductCatalogPro
         onClose={handleCloseModal} 
         initialData={editingProduct}
       />
-      <CategoryManagementModal 
-        isOpen={isCategoryModalOpen} 
-        onClose={() => setIsCategoryModalOpen(false)} 
-      />
+      {permissions.canManageCategories && (
+        <CategoryManagementModal 
+          isOpen={isCategoryModalOpen} 
+          onClose={() => setIsCategoryModalOpen(false)} 
+        />
+      )}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
