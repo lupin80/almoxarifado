@@ -1,7 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import dotenv from 'dotenv';
 import routes from './src/routes/index.js';
+
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
