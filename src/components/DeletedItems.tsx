@@ -54,10 +54,9 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
   const confirmRestore = async () => {
     if (!selectedProduct) return;
     try {
-      await fetch(`http://localhost:3000/api/products/${selectedProduct.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...selectedProduct, status: 'ativo' })
+      await fetch(`http://localhost:3000/api/trash/products/${selectedProduct.id}/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
       });
       setProducts(prev => prev.filter(p => p.id !== selectedProduct.id));
       setIsRestoreModalOpen(false);
@@ -70,7 +69,7 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
   const confirmDeletePermanent = async () => {
     if (!selectedProduct) return;
     try {
-      await fetch(`http://localhost:3000/api/products/${selectedProduct.id}`, {
+      await fetch(`http://localhost:3000/api/trash/products/${selectedProduct.id}/permanent`, {
         method: 'DELETE'
       });
       setProducts(prev => prev.filter(p => p.id !== selectedProduct.id));
