@@ -141,16 +141,25 @@ export async function updateProduct(req, res) {
 
 export async function deleteProduct(req, res) {
   try {
+    // Buscar dados para o log e extrair imagem
+    const { data: product, error: fetchError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
     const { error } = await supabase
       .from('products')
-      .update({ status: 'excluido' })
+      .delete()
       .eq('id', req.params.id);
 
     if (error) throw error;
 
-    await AuditController.log(req.userId, 'SOFT_DELETE', 'products', req.params.id, null, { status: 'excluido' });
+    await AuditController.log(req.userId, 'MOVE_TO_TRASH', 'products', req.params.id, product, null);
 
-    res.json({ message: 'Produto movido para a lixeira' });
+    res.json({ message: 'Produto movido para a lixeira (arquivado)' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

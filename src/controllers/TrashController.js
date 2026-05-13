@@ -5,10 +5,9 @@ class TrashController {
   async getDeletedProducts(req, res) {
     try {
       const { data, error } = await supabase
-        .from('products')
+        .from('deleted_products')
         .select('*')
-        .eq('status', 'excluido')
-        .order('updated_at', { ascending: false });
+        .order('deleted_at', { ascending: false });
 
       if (error) throw error;
       return res.json(data);
@@ -20,24 +19,34 @@ class TrashController {
   async restoreProduct(req, res) {
     const { id } = req.params;
     try {
-      const { data: product, error: fetchError } = await supabase
-        .from('products')
-        .select('*')
+      // 1. Buscar o registro na lixeira
+      const { data: archived, error: fetchError } = await supabase
+        .from('deleted_products')
+        .select('data')
         .eq('id', id)
         .single();
 
       if (fetchError) throw fetchError;
 
-      const { data, error } = await supabase
+      const originalData = archived.data;
+      // Remover campos de controle de lixeira se necessário, 
+      // mas aqui vamos reinserir com status ativo
+      originalData.status = 'ativo';
+      originalData.updated_at = new Date().toISOString();
+
+      // 2. Inserir de volta na tabela principal
+      const { data, error: insertError } = await supabase
         .from('products')
-        .update({ status: 'ativo' })
-        .eq('id', id)
+        .insert([originalData])
         .select()
         .single();
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
-      await AuditController.log(req.userId, 'RESTORE', 'products', id, product, data);
+      // 3. Remover da lixeira
+      await supabase.from('deleted_products').delete().eq('id', id);
+
+      await AuditController.log(req.userId, 'RESTORE', 'products', id, null, data);
 
       return res.json({ message: 'Produto restaurado com sucesso', data });
     } catch (error) {
@@ -48,46 +57,39 @@ class TrashController {
   async permanentDeleteProduct(req, res) {
     const { id } = req.params;
     try {
-      const { data: product, error: fetchError } = await supabase
-        .from('products')
+      const { data: archived, error: fetchError } = await supabase
+        .from('deleted_products')
         .select('*')
         .eq('id', id)
         .single();
 
       if (fetchError) throw fetchError;
 
-      // Se houver imagem, remover do storage
-      if (product.image) {
+      // Remover imagem se existir (usando os dados salvos na lixeira)
+      const product = archived.data;
+      if (product && product.image) {
         try {
-          // Extrair o caminho do arquivo da URL do Supabase
-          // A URL geralmente é: .../storage/v1/object/public/vault-assets/product-images/123-img.jpg
-          // Precisamos de: product-images/123-img.jpg
           const urlParts = product.image.split('vault-assets/');
           if (urlParts.length > 1) {
             const filePath = urlParts[1];
-            const { error: storageError } = await supabase.storage
-              .from('vault-assets')
-              .remove([filePath]);
-            
-            if (storageError) {
-              console.error('Erro ao deletar imagem do storage:', storageError);
-            }
+            await supabase.storage.from('vault-assets').remove([filePath]);
           }
         } catch (e) {
-          console.error('Erro ao processar deleção de imagem:', e);
+          console.error('Erro ao deletar imagem do storage na exclusão permanente:', e);
         }
       }
 
+      // Deletar da tabela de lixeira
       const { error } = await supabase
-        .from('products')
+        .from('deleted_products')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
 
-      await AuditController.log(req.userId, 'PERMANENT_DELETE', 'products', id, product, null);
+      await AuditController.log(req.userId, 'PERMANENT_DELETE', 'products', id, archived, null);
 
-      return res.json({ message: 'Produto excluído permanentemente' });
+      return res.json({ message: 'Produto excluído permanentemente da lixeira' });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }

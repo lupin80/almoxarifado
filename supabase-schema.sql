@@ -171,3 +171,63 @@ BEFORE UPDATE ON suppliers
 FOR EACH ROW
 EXECUTE PROCEDURE update_updated_at_column();
 
+
+-- Recycle Bin Tables
+CREATE TABLE IF NOT EXISTS deleted_products (
+  id UUID PRIMARY KEY,
+  name TEXT,
+  sku TEXT,
+  category TEXT,
+  data JSONB,
+  deleted_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_by UUID REFERENCES usuarios(id)
+);
+
+CREATE TABLE IF NOT EXISTS deleted_suppliers (
+  id UUID PRIMARY KEY,
+  name TEXT,
+  cnpj TEXT,
+  data JSONB,
+  deleted_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_by UUID REFERENCES usuarios(id)
+);
+
+CREATE TABLE IF NOT EXISTS deleted_movements (
+  id UUID PRIMARY KEY,
+  product_id UUID,
+  data JSONB,
+  deleted_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_by UUID REFERENCES usuarios(id)
+);
+
+-- Trigger Function to Archive on Delete
+CREATE OR REPLACE FUNCTION archive_deleted_record()
+RETURNS TRIGGER AS 
+DECLARE
+  v_table_name TEXT;
+BEGIN
+  v_table_name := TG_TABLE_NAME;
+  
+  IF v_table_name = 'products' THEN
+    INSERT INTO deleted_products (id, name, sku, category, data, deleted_at)
+    VALUES (OLD.id, OLD.name, OLD.sku, OLD.category, to_jsonb(OLD), NOW());
+  ELSIF v_table_name = 'suppliers' THEN
+    INSERT INTO deleted_suppliers (id, name, cnpj, data, deleted_at)
+    VALUES (OLD.id, OLD.name, OLD.cnpj, to_jsonb(OLD), NOW());
+  END IF;
+  
+  RETURN OLD;
+END;
+ LANGUAGE plpgsql;
+
+-- Apply Triggers
+DROP TRIGGER IF EXISTS tr_archive_product ON products;
+CREATE TRIGGER tr_archive_product
+BEFORE DELETE ON products
+FOR EACH ROW EXECUTE FUNCTION archive_deleted_record();
+
+DROP TRIGGER IF EXISTS tr_archive_supplier ON suppliers;
+CREATE TRIGGER tr_archive_supplier
+BEFORE DELETE ON suppliers
+FOR EACH ROW EXECUTE FUNCTION archive_deleted_record();
+
