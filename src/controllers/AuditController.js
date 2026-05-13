@@ -19,8 +19,8 @@ class AuditController {
     }
   }
 
-  // Static helper for other controllers
-  static async log(userId, action, tableName, recordId, oldData = null, newData = null) {
+  // Helper for other controllers
+  async log(userId, action, tableName, recordId, oldData = null, newData = null) {
     try {
       await supabase
         .from('audit_log')
