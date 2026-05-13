@@ -16,10 +16,23 @@ class TrashController {
     }
   }
 
+  async getDeletedSuppliers(req, res) {
+    try {
+      const { data, error } = await supabase
+        .from('deleted_suppliers')
+        .select('*')
+        .order('deleted_at', { ascending: false });
+
+      if (error) throw error;
+      return res.json(data);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
   async restoreProduct(req, res) {
     const { id } = req.params;
     try {
-      // 1. Buscar o registro na lixeira
       const { data: archived, error: fetchError } = await supabase
         .from('deleted_products')
         .select('data')
@@ -29,12 +42,9 @@ class TrashController {
       if (fetchError) throw fetchError;
 
       const originalData = archived.data;
-      // Remover campos de controle de lixeira se necessário, 
-      // mas aqui vamos reinserir com status ativo
       originalData.status = 'ativo';
       originalData.updated_at = new Date().toISOString();
 
-      // 2. Inserir de volta na tabela principal
       const { data, error: insertError } = await supabase
         .from('products')
         .insert([originalData])
@@ -43,12 +53,38 @@ class TrashController {
 
       if (insertError) throw insertError;
 
-      // 3. Remover da lixeira
       await supabase.from('deleted_products').delete().eq('id', id);
-
       await AuditController.log(req.userId, 'RESTORE', 'products', id, null, data);
 
       return res.json({ message: 'Produto restaurado com sucesso', data });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  async restoreSupplier(req, res) {
+    const { id } = req.params;
+    try {
+      const { data: archived, error: fetchError } = await supabase
+        .from('deleted_suppliers')
+        .select('data')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { data, error: insertError } = await supabase
+        .from('suppliers')
+        .insert([archived.data])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      await supabase.from('deleted_suppliers').delete().eq('id', id);
+      await AuditController.log(req.userId, 'RESTORE', 'suppliers', id, null, data);
+
+      return res.json({ message: 'Fornecedor restaurado com sucesso', data });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }
@@ -65,7 +101,6 @@ class TrashController {
 
       if (fetchError) throw fetchError;
 
-      // Remover imagem se existir (usando os dados salvos na lixeira)
       const product = archived.data;
       if (product && product.image) {
         try {
@@ -75,21 +110,28 @@ class TrashController {
             await supabase.storage.from('vault-assets').remove([filePath]);
           }
         } catch (e) {
-          console.error('Erro ao deletar imagem do storage na exclusão permanente:', e);
+          console.error('Erro ao deletar imagem do storage:', e);
         }
       }
 
-      // Deletar da tabela de lixeira
-      const { error } = await supabase
-        .from('deleted_products')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('deleted_products').delete().eq('id', id);
       if (error) throw error;
 
       await AuditController.log(req.userId, 'PERMANENT_DELETE', 'products', id, archived, null);
+      return res.json({ message: 'Produto excluído permanentemente' });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
 
-      return res.json({ message: 'Produto excluído permanentemente da lixeira' });
+  async permanentDeleteSupplier(req, res) {
+    const { id } = req.params;
+    try {
+      const { error } = await supabase.from('deleted_suppliers').delete().eq('id', id);
+      if (error) throw error;
+
+      await AuditController.log(req.userId, 'PERMANENT_DELETE', 'suppliers', id, null, null);
+      return res.json({ message: 'Fornecedor excluído permanentemente' });
     } catch (error) {
       return res.status(500).json({ error: error.message });
     }

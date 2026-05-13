@@ -8,4 +8,8 @@ router.get('/products', authMiddleware, TrashController.getDeletedProducts);
 router.post('/products/:id/restore', authMiddleware, TrashController.restoreProduct);
 router.delete('/products/:id/permanent', authMiddleware, TrashController.permanentDeleteProduct);
 
+router.get('/suppliers', authMiddleware, TrashController.getDeletedSuppliers);
+router.post('/suppliers/:id/restore', authMiddleware, TrashController.restoreSupplier);
+router.delete('/suppliers/:id/permanent', authMiddleware, TrashController.permanentDeleteSupplier);
+
 export default router;
