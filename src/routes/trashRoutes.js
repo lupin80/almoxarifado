@@ -12,4 +12,8 @@ router.get('/suppliers', authMiddleware, TrashController.getDeletedSuppliers);
 router.post('/suppliers/:id/restore', authMiddleware, TrashController.restoreSupplier);
 router.delete('/suppliers/:id/permanent', authMiddleware, TrashController.permanentDeleteSupplier);
 
+router.get('/movements', authMiddleware, TrashController.getDeletedMovements);
+router.post('/movements/:id/restore', authMiddleware, TrashController.restoreMovement);
+router.delete('/movements/:id/permanent', authMiddleware, TrashController.permanentDeleteMovement);
+
 export default router;

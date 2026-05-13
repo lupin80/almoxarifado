@@ -136,6 +136,60 @@ class TrashController {
       return res.status(500).json({ error: error.message });
     }
   }
+  async getDeletedMovements(req, res) {
+    try {
+      const { data, error } = await supabase
+        .from('deleted_movements')
+        .select('*')
+        .order('deleted_at', { ascending: false });
+
+      if (error) throw error;
+      return res.json(data);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  async restoreMovement(req, res) {
+    const { id } = req.params;
+    try {
+      const { data: archived, error: fetchError } = await supabase
+        .from('deleted_movements')
+        .select('data')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { data, error: insertError } = await supabase
+        .from('movements')
+        .insert([archived.data])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      await supabase.from('deleted_movements').delete().eq('id', id);
+      await AuditController.log(req.userId, 'RESTORE', 'movements', id, null, data);
+
+      return res.json({ message: 'Movimentação restaurada com sucesso', data });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  async permanentDeleteMovement(req, res) {
+    const { id } = req.params;
+    try {
+      const { error } = await supabase.from('deleted_movements').delete().eq('id', id);
+      if (error) throw error;
+
+      await AuditController.log(req.userId, 'PERMANENT_DELETE', 'movements', id, null, null);
+      return res.json({ message: 'Movimentação excluída permanentemente' });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 export default new TrashController();

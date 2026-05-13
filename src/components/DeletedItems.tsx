@@ -18,7 +18,7 @@ interface DeletedItemsProps {
 }
 
 export function DeletedItems({ searchQuery }: DeletedItemsProps) {
-  const [activeTab, setActiveTab] = useState<'products' | 'suppliers'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'suppliers' | 'movements'>('products');
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
@@ -33,7 +33,7 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
   const fetchDeleted = async () => {
     setLoading(true);
     try {
-      const endpoint = activeTab === 'products' ? 'products' : 'suppliers';
+      const endpoint = activeTab;
       const response = await fetch(`http://localhost:3000/api/trash/${endpoint}`);
       const data = await response.json();
       setItems(data);
@@ -57,7 +57,7 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
   const confirmRestore = async () => {
     if (!selectedItem) return;
     try {
-      const endpoint = activeTab === 'products' ? 'products' : 'suppliers';
+      const endpoint = activeTab;
       await fetch(`http://localhost:3000/api/trash/${endpoint}/${selectedItem.id}/restore`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
@@ -73,7 +73,7 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
   const confirmDeletePermanent = async () => {
     if (!selectedItem) return;
     try {
-      const endpoint = activeTab === 'products' ? 'products' : 'suppliers';
+      const endpoint = activeTab;
       await fetch(`http://localhost:3000/api/trash/${endpoint}/${selectedItem.id}/permanent`, {
         method: 'DELETE'
       });
@@ -95,10 +95,17 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
         i.sku?.toLowerCase().includes(term) ||
         i.category?.toLowerCase().includes(term)
       );
-    } else {
+    } else if (activeTab === 'suppliers') {
       return (
         i.name?.toLowerCase().includes(term) ||
         i.cnpj?.toLowerCase().includes(term)
+      );
+    } else {
+      // For movements, we might want to search in the JSON data
+      const data = i.data || {};
+      return (
+        data.type?.toLowerCase().includes(term) ||
+        data.note?.toLowerCase().includes(term)
       );
     }
   });
@@ -113,11 +120,11 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
       </section>
 
       {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-surface-container rounded-xl w-fit">
+      <div className="flex gap-2 p-1 bg-surface-container rounded-xl w-fit overflow-x-auto max-w-full">
         <button
           onClick={() => setActiveTab('products')}
           className={cn(
-            "px-6 py-2.5 rounded-lg text-xs font-black tracking-widest uppercase transition-all",
+            "px-6 py-2.5 rounded-lg text-xs font-black tracking-widest uppercase transition-all whitespace-nowrap",
             activeTab === 'products' 
               ? "bg-secondary text-on-secondary shadow-lg shadow-secondary/20" 
               : "text-on-surface-variant hover:text-on-surface"
@@ -128,7 +135,7 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
         <button
           onClick={() => setActiveTab('suppliers')}
           className={cn(
-            "px-6 py-2.5 rounded-lg text-xs font-black tracking-widest uppercase transition-all",
+            "px-6 py-2.5 rounded-lg text-xs font-black tracking-widest uppercase transition-all whitespace-nowrap",
             activeTab === 'suppliers' 
               ? "bg-secondary text-on-secondary shadow-lg shadow-secondary/20" 
               : "text-on-surface-variant hover:text-on-surface"
@@ -136,13 +143,24 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
         >
           Fornecedores
         </button>
+        <button
+          onClick={() => setActiveTab('movements')}
+          className={cn(
+            "px-6 py-2.5 rounded-lg text-xs font-black tracking-widest uppercase transition-all whitespace-nowrap",
+            activeTab === 'movements' 
+              ? "bg-secondary text-on-secondary shadow-lg shadow-secondary/20" 
+              : "text-on-surface-variant hover:text-on-surface"
+          )}
+        >
+          Movimentações
+        </button>
       </div>
 
       <section className="flex flex-col md:flex-row gap-4 items-center justify-between bg-surface-container-low p-4 rounded-xl border border-outline-variant/10">
         <div className="flex items-center gap-3 text-on-surface-variant">
           <Search className="w-5 h-5" />
           <span className="text-sm font-bold uppercase tracking-widest">
-            {searchQuery ? `Resultados na lixeira para: ${searchQuery}` : `Todos os ${activeTab === 'products' ? 'Produtos' : 'Fornecedores'} Excluídos`}
+            {searchQuery ? `Resultados na lixeira para: ${searchQuery}` : `Todos os ${activeTab === 'products' ? 'Produtos' : activeTab === 'suppliers' ? 'Fornecedores' : 'Movimentações'} Excluídos`}
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs font-bold text-on-surface-variant uppercase tracking-widest">
@@ -167,10 +185,10 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
               <thead>
                 <tr className="bg-surface-container-highest/20">
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                    {activeTab === 'products' ? 'Produto' : 'Fornecedor'}
+                    {activeTab === 'products' ? 'Produto' : activeTab === 'suppliers' ? 'Fornecedor' : 'Tipo / ID'}
                   </th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
-                    {activeTab === 'products' ? 'SKU' : 'CNPJ'}
+                    {activeTab === 'products' ? 'SKU' : activeTab === 'suppliers' ? 'CNPJ' : 'Quantidade'}
                   </th>
                   <th className="px-6 py-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">
                     {activeTab === 'products' ? 'Categoria' : 'Data de Exclusão'}
@@ -205,11 +223,13 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
                             />
                           </div>
                         )}
-                        <span className="font-bold text-on-surface">{item.name}</span>
+                        <span className="font-bold text-on-surface">
+                          {activeTab === 'movements' ? `${item.data?.type || 'N/A'} - ${item.id.slice(0,8)}` : item.name}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-xs text-on-surface-variant font-mono">
-                      {activeTab === 'products' ? item.sku : item.cnpj}
+                      {activeTab === 'products' ? item.sku : activeTab === 'suppliers' ? item.cnpj : item.data?.quantity || '0'}
                     </td>
                     <td className="px-6 py-4">
                       {activeTab === 'products' ? (
