@@ -160,10 +160,10 @@ export function DeletedItems({ searchQuery }: DeletedItemsProps) {
                         : "hover:bg-surface-container"
                     )}
                   >
-                    {selectedRowId === p.id && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary shadow-[0_0_15px_rgba(102,221,139,0.6)] z-10" />
-                    )}
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 relative">
+                      {selectedRowId === p.id && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary shadow-[0_0_15px_rgba(102,221,139,0.6)] z-10" />
+                      )}
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-surface-container-highest rounded-lg overflow-hidden grayscale opacity-60">
                           <img src={resolveProductImageUrl(p.image)} alt={p.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />

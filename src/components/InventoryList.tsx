@@ -344,10 +344,12 @@ export function InventoryList({ onViewProduct, searchQuery }: InventoryListProps
                           : 'hover:bg-surface-container/50'
                       )}
                     >
+                    <td className="px-6 md:px-8 py-6 font-mono text-[10px] md:text-xs text-on-surface-variant relative">
                       {selectedProductId === item.id && (
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary shadow-[0_0_15px_rgba(102,221,139,0.6)] z-10" />
                       )}
-                      <td className="px-6 md:px-8 py-6 font-mono text-[10px] md:text-xs text-on-surface-variant">{item.sku}</td>
+                      {item.sku}
+                    </td>
                       <td className="px-6 py-6">
                         <div className="flex items-center gap-3 md:gap-4">
                           <span
