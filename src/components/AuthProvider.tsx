@@ -56,9 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const updateUser = (nextUser: User) => {
-    localStorage.setItem('vault_user', JSON.stringify(nextUser));
-    setUser(nextUser);
+  const updateUser = (nextUser: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return nextUser as User;
+      const updated = { ...prev, ...nextUser };
+      localStorage.setItem('vault_user', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const value = {

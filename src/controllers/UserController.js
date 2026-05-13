@@ -117,11 +117,16 @@ export async function uploadUserImage(req, res) {
 
     if (dbError) throw dbError;
 
+    const { data: updatedUser, error: fetchError } = await supabase
+      .from('usuarios')
+      .select('id, name, email, role, image, created_at')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
     res.json({
-      user: {
-        id: req.params.id,
-        image: publicUrl,
-      },
+      user: updatedUser
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
