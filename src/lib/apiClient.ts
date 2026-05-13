@@ -9,7 +9,7 @@ export async function apiRequest<T = unknown>(
   path: string,
   options: RequestInit & { timeoutMs?: number } = {},
 ): Promise<T> {
-  const { timeoutMs = 15000, ...fetchOptions } = options;
+  const { timeoutMs = 60000, ...fetchOptions } = options;
 
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
