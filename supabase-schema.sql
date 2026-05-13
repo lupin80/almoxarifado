@@ -131,3 +131,43 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
+
+-- Audit Log Table
+CREATE TABLE IF NOT EXISTS audit_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES usuarios(id),
+  action TEXT NOT NULL,
+  table_name TEXT NOT NULL,
+  record_id UUID NOT NULL,
+  old_data JSONB,
+  new_data JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Add updated_at to existing tables if missing
+ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Apply trigger to products
+DROP TRIGGER IF EXISTS set_timestamp ON products;
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON products
+FOR EACH ROW
+EXECUTE PROCEDURE update_updated_at_column();
+
+-- Apply trigger to suppliers
+DROP TRIGGER IF EXISTS set_timestamp ON suppliers;
+CREATE TRIGGER set_timestamp
+BEFORE UPDATE ON suppliers
+FOR EACH ROW
+EXECUTE PROCEDURE update_updated_at_column();
+

@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase.js';
+import AuditController from './AuditController.js';
 
 export async function listProducts(req, res) {
   try {
@@ -78,6 +79,9 @@ export async function createProduct(req, res) {
       .single();
 
     if (error) throw error;
+
+    await AuditController.log(req.userId, 'CREATE', 'products', data.id, null, data);
+
     res.status(201).json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -114,6 +118,11 @@ export async function updateProduct(req, res) {
       .eq('id', req.params.id);
 
     if (error) throw error;
+
+    // In a real app, we'd fetch the old data first for a full audit log.
+    // For now, we'll log the action and the new data.
+    await AuditController.log(req.userId, 'UPDATE', 'products', req.params.id, null, req.body);
+
     res.json({ message: 'Produto atualizado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -124,11 +133,14 @@ export async function deleteProduct(req, res) {
   try {
     const { error } = await supabase
       .from('products')
-      .delete()
+      .update({ status: 'excluido' })
       .eq('id', req.params.id);
 
     if (error) throw error;
-    res.json({ message: 'Produto removido permanentemente' });
+
+    await AuditController.log(req.userId, 'SOFT_DELETE', 'products', req.params.id, null, { status: 'excluido' });
+
+    res.json({ message: 'Produto movido para a lixeira' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
