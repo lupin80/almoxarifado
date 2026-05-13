@@ -61,7 +61,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'suppliers', label: 'Fornecedores', icon: Factory },
     { id: 'abc-analysis', label: 'Curva ABC', icon: TrendingUp },
     { id: 'reports', label: 'Relatórios', icon: FileText },
-    ...deletedItemsNav,
+    { id: 'deleted-items', label: 'Excluídos', icon: Trash2 },
   ];
 
   return (
