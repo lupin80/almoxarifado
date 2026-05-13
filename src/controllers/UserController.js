@@ -62,6 +62,20 @@ export async function updateUser(req, res) {
 
 export async function deleteUser(req, res) {
   try {
+    const { data: user, error: fetchError } = await supabase
+      .from('usuarios')
+      .select('image')
+      .eq('id', req.params.id)
+      .single();
+
+    if (!fetchError && user?.image) {
+      const urlParts = user.image.split('vault-assets/');
+      if (urlParts.length > 1) {
+        const filePath = urlParts[1];
+        await supabase.storage.from('vault-assets').remove([filePath]);
+      }
+    }
+
     const { error } = await supabase
       .from('usuarios')
       .delete()

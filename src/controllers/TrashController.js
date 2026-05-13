@@ -56,6 +56,28 @@ class TrashController {
 
       if (fetchError) throw fetchError;
 
+      // Se houver imagem, remover do storage
+      if (product.image) {
+        try {
+          // Extrair o caminho do arquivo da URL do Supabase
+          // A URL geralmente é: .../storage/v1/object/public/vault-assets/product-images/123-img.jpg
+          // Precisamos de: product-images/123-img.jpg
+          const urlParts = product.image.split('vault-assets/');
+          if (urlParts.length > 1) {
+            const filePath = urlParts[1];
+            const { error: storageError } = await supabase.storage
+              .from('vault-assets')
+              .remove([filePath]);
+            
+            if (storageError) {
+              console.error('Erro ao deletar imagem do storage:', storageError);
+            }
+          }
+        } catch (e) {
+          console.error('Erro ao processar deleção de imagem:', e);
+        }
+      }
+
       const { error } = await supabase
         .from('products')
         .delete()
