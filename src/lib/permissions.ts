@@ -22,7 +22,7 @@ export function getUserPermissions(user?: User | null) {
     canDeleteSuppliers: role !== 'usuario',
     canManageCategories: role !== 'usuario',
     canAccessSettings: role === 'admin',
-    canViewDeletedItems: role !== 'usuario',
+    canViewDeletedItems: true,
   };
 }
 
