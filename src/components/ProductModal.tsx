@@ -31,6 +31,7 @@ export function ProductModal({ isOpen, onClose, initialData }: ProductModalProps
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
+  const [skuError, setSkuError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -161,9 +162,26 @@ export function ProductModal({ isOpen, onClose, initialData }: ProductModalProps
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'sku' && value.length > 2) {
+      try {
+        const url = `http://localhost:3000/api/products/check-sku/${value}${initialData?.id ? `?productId=${initialData.id}` : ''}`;
+        const response = await fetch(url);
+        const result = await response.json();
+        if (result.exists) {
+          setSkuError(`Atenção: Este SKU já pertence ao produto "${result.product.name}"`);
+        } else {
+          setSkuError(null);
+        }
+      } catch (err) {
+        console.error("Erro ao validar SKU:", err);
+      }
+    } else if (name === 'sku') {
+      setSkuError(null);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,9 +286,13 @@ export function ProductModal({ isOpen, onClose, initialData }: ProductModalProps
                   required
                   value={formData.sku}
                   onChange={handleChange}
-                  className="w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 px-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all" 
+                  className={cn(
+                    "w-full bg-surface-container-highest border-outline-variant/20 border rounded-md py-3 px-4 text-sm text-on-surface focus:ring-1 focus:ring-secondary/40 transition-all",
+                    skuError && "border-tertiary ring-1 ring-tertiary/20"
+                  )} 
                   placeholder="TX-1002-BL" 
                 />
+                {skuError && <p className="text-[10px] text-tertiary font-bold mt-1 animate-pulse">{skuError}</p>}
               </div>
 
               <div className="space-y-2">

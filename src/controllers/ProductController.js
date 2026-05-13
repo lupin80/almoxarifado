@@ -78,7 +78,12 @@ export async function createProduct(req, res) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(400).json({ error: 'Este SKU já está cadastrado em outro produto.' });
+      }
+      throw error;
+    }
 
     await AuditController.log(req.userId, 'CREATE', 'products', data.id, null, data);
 
@@ -117,7 +122,12 @@ export async function updateProduct(req, res) {
       })
       .eq('id', req.params.id);
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(400).json({ error: 'Este SKU já está sendo usado por outro produto.' });
+      }
+      throw error;
+    }
 
     // In a real app, we'd fetch the old data first for a full audit log.
     // For now, we'll log the action and the new data.
@@ -173,3 +183,32 @@ export async function uploadProductImage(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+export async function checkSku(req, res) {
+  const { sku } = req.params;
+  const { productId } = req.query;
+
+  try {
+    let query = supabase
+      .from('products')
+      .select('id, name')
+      .eq('sku', sku)
+      .neq('status', 'excluido');
+
+    if (productId) {
+      query = query.neq('id', productId);
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error) throw error;
+    
+    return res.json({ 
+      exists: !!data,
+      product: data || null
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+

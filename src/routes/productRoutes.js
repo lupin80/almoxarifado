@@ -7,11 +7,13 @@ import {
   updateProduct,
   deleteProduct,
   uploadProductImage,
+  checkSku,
 } from '../controllers/ProductController.js';
 import upload from '../middlewares/upload.js';
 
 const router = Router();
 
+router.get('/check-sku/:sku', checkSku);
 router.get('/', listProducts);
 router.get('/deleted', listDeletedProducts);
 router.get('/:id', getProductById);
