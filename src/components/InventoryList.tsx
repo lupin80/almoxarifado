@@ -139,9 +139,7 @@ export function InventoryList({ onViewProduct, searchQuery }: InventoryListProps
   });
 
   const formatValuation = (val: number) => {
-    if (val >= 1000000) return `R$ ${(val / 1000000).toFixed(1)}M`;
-    if (val >= 1000) return `R$ ${(val / 1000).toFixed(1)}K`;
-    return `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   if (!loading && products.length === 0) {
