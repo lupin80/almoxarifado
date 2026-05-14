@@ -8,6 +8,7 @@ import { Suppliers } from './components/Suppliers';
 import { ABCAnalysis } from './components/ABCAnalysis';
 import { Reports } from './components/Reports';
 import { DeletedItems } from './components/DeletedItems';
+import { Users } from './components/Users';
 import { Settings } from './components/Settings';
 import { Support } from './components/Support';
 import { ProductDetail } from './components/ProductDetail';
@@ -79,6 +80,8 @@ function renderCurrentView(
       return <Reports {...searchProps} />;
     case 'deleted-items':
       return <DeletedItems {...searchProps} />;
+    case 'users':
+      return <Users />;
     case 'settings':
       return <Settings />;
     case 'support':

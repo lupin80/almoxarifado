@@ -231,3 +231,32 @@ CREATE TRIGGER tr_archive_supplier
 BEFORE DELETE ON suppliers
 FOR EACH ROW EXECUTE FUNCTION archive_deleted_record();
 
+
+-- Update archive trigger for movements
+CREATE OR REPLACE FUNCTION archive_deleted_record()
+RETURNS TRIGGER AS 
+DECLARE
+  v_table_name TEXT;
+BEGIN
+  v_table_name := TG_TABLE_NAME;
+  
+  IF v_table_name = 'products' THEN
+    INSERT INTO deleted_products (id, name, sku, category, data, deleted_at)
+    VALUES (OLD.id, OLD.name, OLD.sku, OLD.category, to_jsonb(OLD), NOW());
+  ELSIF v_table_name = 'suppliers' THEN
+    INSERT INTO deleted_suppliers (id, name, cnpj, data, deleted_at)
+    VALUES (OLD.id, OLD.name, OLD.cnpj, to_jsonb(OLD), NOW());
+  ELSIF v_table_name = 'movements' THEN
+    INSERT INTO deleted_movements (id, product_id, data, deleted_at)
+    VALUES (OLD.id, OLD.product_id, to_jsonb(OLD), NOW());
+  END IF;
+  
+  RETURN OLD;
+END;
+ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tr_archive_movement ON movements;
+CREATE TRIGGER tr_archive_movement
+BEFORE DELETE ON movements
+FOR EACH ROW EXECUTE FUNCTION archive_deleted_record();
+

@@ -29,7 +29,7 @@ export function getUserPermissions(user?: User | null) {
 export function canAccessView(view: View, user?: User | null) {
   const permissions = getUserPermissions(user);
 
-  if (view === 'settings') {
+  if (view === 'settings' || view === 'users') {
     return permissions.canAccessSettings;
   }
 

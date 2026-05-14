@@ -30,7 +30,7 @@ import { listProducts } from '../services/productService';
 import { uploadAvatar } from '../services/userService';
 
 
-export type View = 'dashboard' | 'inventory' | 'products' | 'movements' | 'suppliers' | 'product-detail' | 'deleted-items' | 'settings' | 'support' | 'reports' | 'abc-analysis';
+export type View = 'dashboard' | 'inventory' | 'products' | 'movements' | 'suppliers' | 'product-detail' | 'deleted-items' | 'settings' | 'support' | 'reports' | 'abc-analysis' | 'users';
 
 interface SidebarProps {
   currentView: View;
@@ -49,10 +49,6 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
   const { user } = useAuth();
   const permissions = getUserPermissions(user);
 
-  const deletedItemsNav: NavItem[] = permissions.canViewDeletedItems
-    ? [{ id: 'deleted-items', label: 'Excluídos', icon: Trash2 }]
-    : [];
-
   const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'inventory', label: 'Estoque', icon: Package },
@@ -62,11 +58,15 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
     { id: 'abc-analysis', label: 'Curva ABC', icon: TrendingUp },
     { id: 'reports', label: 'Relatórios', icon: FileText },
     { id: 'deleted-items', label: 'Excluídos', icon: Trash2 },
+    ...(permissions.canAccessSettings ? [
+      { id: 'users', label: 'Usuários', icon: User } as NavItem,
+      { id: 'settings', label: 'Configurações', icon: Settings } as NavItem
+    ] : []),
   ];
 
   return (
     <aside className="hidden md:flex flex-col h-screen w-64 bg-surface-container-low py-6 border-r border-outline-variant/10 fixed left-0 top-0 z-50">
-      <div className="px-6 mb-8">
+      <div className="px-6 mb-8 shrink-0">
         <h1 className="text-lg font-black text-on-surface tracking-tight font-headline uppercase">Vault Inventory</h1>
         <div className="mt-6 flex items-center gap-3">
           <div className="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center">
@@ -79,7 +79,7 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-2">
+      <nav className="flex-1 space-y-1 px-2 overflow-y-auto scrollbar-none">
         {navItems.map((item) => (
           <button
             key={item.id}
@@ -100,31 +100,17 @@ export function Sidebar({ currentView, onViewChange }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="mt-auto px-2 space-y-1">
-        {permissions.canAccessSettings && (
-          <button 
-            onClick={() => onViewChange('settings')}
-            className={cn(
-              "w-full flex items-center gap-3 px-4 py-2 transition-all rounded-md",
-              currentView === 'settings' 
-                ? "text-secondary bg-secondary/10 font-bold" 
-                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
-            )}
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-sm">Configurações</span>
-          </button>
-        )}
+      <div className="mt-auto px-2 pt-4 space-y-1 shrink-0 border-t border-outline-variant/5">
         <button 
           onClick={() => onViewChange('support')}
           className={cn(
-            "w-full flex items-center gap-3 px-4 py-2 transition-all rounded-md",
+            "w-full flex items-center gap-3 px-4 py-2 transition-all rounded-md group",
             currentView === 'support' 
               ? "text-secondary bg-secondary/10 font-bold" 
               : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
           )}
         >
-          <HelpCircle className="w-5 h-5" />
+          <HelpCircle className={cn("w-5 h-5 transition-transform group-hover:scale-110", currentView === 'support' ? "fill-secondary/20" : "")} />
           <span className="text-sm">Suporte</span>
         </button>
       </div>
@@ -190,10 +176,25 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [avatarBuster, setAvatarBuster] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetchNotifications();
   }, []);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [user?.image, avatarBuster]);
+
+  // Limpar previewUrl ao desmontar ou mudar
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const fetchNotifications = async () => {
     try {
@@ -249,19 +250,25 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
   };
 
   const avatarSrc = (() => {
+    if (previewUrl) return previewUrl;
+    
     if (avatarFailed || !user?.image) {
       return user ? `https://picsum.photos/seed/${user.email}/100/100` : 'https://picsum.photos/seed/user/100/100';
     }
 
+    // Direct URLs (Supabase or Data URI)
+    if (user.image.startsWith('http')) {
+      // Assume public URL from Supabase bucket; use as‑is
+      return user.image;
+    }
+
+    
     if (user.image.startsWith('data:')) {
       return user.image;
     }
 
-    if (user.image.startsWith('http://localhost:3000/uploads/')) {
-      return user.image.replace('http://localhost:3000', '');
-    }
-
-    if (user.image.startsWith('http') || user.image.startsWith('/uploads/')) {
+    // Legacy local paths
+    if (user.image.startsWith('/uploads/')) {
       return user.image;
     }
 
@@ -276,6 +283,11 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
+
+    // Criar preview instantâneo
+    const blobUrl = URL.createObjectURL(file);
+    setPreviewUrl(blobUrl);
+    setAvatarFailed(false);
 
     if (!file.type.startsWith('image/')) {
       alert('Selecione uma imagem válida.');
@@ -298,7 +310,10 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
       formData.append('email', user.email);
 
       const result = await uploadAvatar(user.id, file);
-      if (result?.user) updateUser(result.user);
+      if (result?.user) {
+        updateUser(result.user);
+        setAvatarBuster(prev => prev + 1);
+      }
     } catch (error) {
       console.error('Avatar upload failed:', error);
       alert(error instanceof Error ? error.message : 'Falha ao atualizar foto de perfil.');
@@ -459,8 +474,10 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
                   src={avatarSrc}
                   alt="Profile"
                   className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                  onError={() => setAvatarFailed(true)}
+                  onError={() => {
+                    console.log('Avatar load failed, using fallback');
+                    setAvatarFailed(true);
+                  }}
                 />
                 <span className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   {uploadingAvatar ? (

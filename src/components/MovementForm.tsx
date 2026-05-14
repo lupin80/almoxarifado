@@ -14,6 +14,9 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { listProducts } from '../services/productService';
+import { listMovements, createMovement } from '../services/movementsService';
+import { listDestinations, createDestination } from '../services/destinationService';
 
 export function MovementForm() {
   const [products, setProducts] = useState<any[]>([]);
@@ -54,16 +57,16 @@ export function MovementForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [prodRes, moveRes, destRes] = await Promise.all([
-          fetch('http://localhost:3000/api/products'),
-          fetch('http://localhost:3000/api/movements'),
-          fetch('http://localhost:3000/api/destinations')
+        const [prods, moves, dests] = await Promise.all([
+          listProducts(),
+          listMovements(),
+          listDestinations(),
         ]);
-        setProducts(await prodRes.json());
-        setMovements(await moveRes.json());
-        setDestinations(await destRes.json());
+        setProducts(prods);
+        setMovements(moves);
+        setDestinations(dests);
       } catch (error) {
-        console.error("Erro ao conectar com a API SQLite:", error);
+        console.error('Erro ao conectar com a API:', error);
         setStatus({ type: 'error', message: 'Não foi possível conectar ao servidor local.' });
       }
     };
@@ -81,17 +84,11 @@ export function MovementForm() {
     e.preventDefault();
     if (!newDestName.trim()) return;
     try {
-      const response = await fetch('http://localhost:3000/api/destinations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newDestName.trim() })
-      });
-      if (response.ok) {
-        setNewDestName('');
-        setIsDestModalOpen(false);
-      }
+      await createDestination(newDestName.trim());
+      setNewDestName('');
+      setIsDestModalOpen(false);
     } catch (error) {
-      console.error("Erro ao salvar destino:", error);
+      console.error('Erro ao salvar destino:', error);
     }
   };
 
@@ -118,20 +115,13 @@ export function MovementForm() {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3000/api/movements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          quantity: qty,
-          targetProductId: formData.targetProductId || null,
-          origin: formData.origin || 'Almoxarifado Geral',
-          destination: formData.destination || 'Almoxarifado Geral'
-        })
+      await createMovement({
+        ...formData,
+        quantity: qty,
+        targetProductId: formData.targetProductId || null,
+        origin: formData.origin || 'Almoxarifado Geral',
+        destination: formData.destination || 'Almoxarifado Geral',
       });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Erro ao processar movimentação');
 
       setStatus({ type: 'success', message: 'Movimentação registrada e estoque atualizado com sucesso!' });
       setFormData(prev => ({ ...prev, quantity: '', productId: '', targetProductId: '' }));

@@ -1,6 +1,6 @@
 # Vault Inventory
 
-Sistema de controle de estoque com frontend em React/Vite e backend em Express + SQLite.
+Sistema de controle de estoque com frontend em React/Vite e backend em Express conectado ao Supabase.
 
 ## Stack
 
@@ -9,7 +9,7 @@ Sistema de controle de estoque com frontend em React/Vite e backend em Express +
 - React 18
 - Vite 6
 - Express 4
-- SQLite via `better-sqlite3`
+- Supabase (PostgreSQL) via `@supabase/supabase-js`
 
 ## Estrutura
 

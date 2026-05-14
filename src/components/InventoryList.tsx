@@ -17,6 +17,8 @@ import { resolveProductImageUrl } from '../lib/images';
 import { useAuth } from './AuthProvider';
 import { getUserPermissions } from '../lib/permissions';
 import type { Movement } from '../types/api';
+import { listProducts, softDeleteProduct } from '../services/productService';
+import { listMovements } from '../services/movementsService';
 
 interface InventoryListProps {
   onViewProduct?: (id: string) => void;
@@ -41,16 +43,13 @@ export function InventoryList({ onViewProduct, searchQuery }: InventoryListProps
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/products');
-        const data = await response.json();
-        setProducts(Array.isArray(data) ? data : []);
-
-        const moveRes = await fetch('http://localhost:3000/api/movements');
-        const movementData = await moveRes.json();
-        const moveArray = Array.isArray(movementData) ? movementData : [];
-
-        setMovements(moveArray);
-        setPendingEntriesCount(moveArray.filter((m: Movement) => m.type === 'entry').length);
+        const [productsData, moveArray] = await Promise.all([
+          listProducts(),
+          listMovements(),
+        ]);
+        setProducts(productsData);
+        setMovements(moveArray as Movement[]);
+        setPendingEntriesCount(moveArray.filter((m) => m.type === 'entry').length);
       } catch (error) {
         console.error('Erro ao carregar inventário:', error);
       } finally {
@@ -72,12 +71,7 @@ export function InventoryList({ onViewProduct, searchQuery }: InventoryListProps
     if (!product) return;
 
     try {
-      await fetch(`http://localhost:3000/api/products/${productToDelete}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...product, status: 'excluido' }),
-      });
-
+      await softDeleteProduct(productToDelete, product);
       setProducts((prev) => prev.filter((p) => p.id !== productToDelete));
       setProductToDelete(null);
       setIsDeleteModalOpen(false);

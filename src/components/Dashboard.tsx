@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TrendingUp, Package, AlertTriangle, ChevronRight, ArrowDownRight, ArrowUpRight, RefreshCcw, PlusCircle, LayoutDashboard } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '../lib/utils';
-import type { Product, Movement } from '../types/api';
 import type { View } from './Layout';
 import { resolveProductImageUrl } from '../lib/images';
+import { listProducts } from '../services/productService';
+import { listMovements } from '../services/movementsService';
 
 interface DashboardProps {
   onViewChange?: (view: View) => void;
@@ -20,7 +21,7 @@ const mockChartData = [
   { name: 'JUN', entradas: 50, saidas: 40 },
 ];
 
-const API_URL = 'http://localhost:3000/api';
+
 
 export function Dashboard({ onViewChange, onViewProduct }: DashboardProps) {
   const [products, setProducts] = useState<any[]>([]);
@@ -32,20 +33,14 @@ export function Dashboard({ onViewChange, onViewProduct }: DashboardProps) {
     const fetchData = async () => {
       try {
         setServerError(false);
-        const [prodRes, moveRes] = await Promise.all([
-          fetch(`${API_URL}/products`),
-          fetch(`${API_URL}/movements`)
+        const [productsData, movementsData] = await Promise.all([
+          listProducts(),
+          listMovements(),
         ]);
-        
-        if (!prodRes.ok || !moveRes.ok) throw new Error('API Response Error');
-
-        const productsData = await prodRes.json();
-        const movementsData = await moveRes.json();
-        
-        setProducts(Array.isArray(productsData) ? productsData : []);
-        setMovements(Array.isArray(movementsData) ? movementsData : []);
+        setProducts(productsData);
+        setMovements(movementsData);
       } catch (error) {
-        console.error("Erro ao carregar dados do Dashboard:", error);
+        console.error('Erro ao carregar dados do Dashboard:', error);
         setServerError(true);
       } finally {
         setLoading(false);

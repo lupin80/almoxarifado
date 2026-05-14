@@ -95,7 +95,8 @@ export async function uploadUserImage(req, res) {
     }
 
     const file = req.file;
-    const fileName = `user-images/${Date.now()}-${file.originalname}`;
+    const fileExt = file.originalname.split('.').pop();
+    const fileName = `user-images/${req.params.id}.${fileExt}`;
     
     const { data: storageData, error: storageError } = await supabase.storage
       .from('vault-assets')
@@ -105,6 +106,9 @@ export async function uploadUserImage(req, res) {
       });
 
     if (storageError) throw storageError;
+
+    // Pequena espera para propagação no Storage
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     const { data: { publicUrl } } = supabase.storage
       .from('vault-assets')
@@ -126,7 +130,10 @@ export async function uploadUserImage(req, res) {
     if (fetchError) throw fetchError;
 
     res.json({
-      user: updatedUser
+      user: {
+        ...updatedUser,
+        image: publicUrl // Garantir que a URL mais recente seja enviada
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

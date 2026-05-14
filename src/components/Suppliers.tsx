@@ -15,6 +15,7 @@ import { ConfirmationModal } from './ConfirmationModal';
 import { SupplierModal } from './SupplierModal';
 import { useAuth } from './AuthProvider';
 import { getUserPermissions } from '../lib/permissions';
+import { listSuppliers, deleteSupplier } from '../services/supplierService';
 
 interface SuppliersProps {
   searchQuery?: string;
@@ -34,11 +35,10 @@ export function Suppliers({ searchQuery }: SuppliersProps) {
   useEffect(() => {
     const fetchSuppliers = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/suppliers');
-        const data = await response.json();
+        const data = await listSuppliers();
         setSuppliers(data);
       } catch (error) {
-        console.error("Erro ao carregar fornecedores:", error);
+        console.error('Erro ao carregar fornecedores:', error);
       } finally {
         setLoading(false);
       }
@@ -55,14 +55,12 @@ export function Suppliers({ searchQuery }: SuppliersProps) {
   const confirmDelete = async () => {
     if (!supplierToDelete) return;
     try {
-      await fetch(`http://localhost:3000/api/suppliers/${supplierToDelete}`, {
-        method: 'DELETE'
-      });
+      await deleteSupplier(supplierToDelete);
       setSuppliers(prev => prev.filter(s => s.id !== supplierToDelete));
       setSupplierToDelete(null);
       setIsDeleteModalOpen(false);
     } catch (error) {
-      console.error("Erro ao excluir fornecedor:", error);
+      console.error('Erro ao excluir fornecedor:', error);
     }
   };
 
