@@ -48,3 +48,53 @@ export async function createMovement(req, res) {
     res.status(400).json({ error: err.message });
   }
 }
+
+export async function deleteMovement(req, res) {
+  try {
+    const { id } = req.params;
+    
+    const { data: movement, error: fetchError } = await supabase
+      .from('movements')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
+
+    // Revert stock
+    if (movement.type === 'entry') {
+      const { data: prod } = await supabase.from('products').select('stock').eq('id', movement.product_id).single();
+      if (prod) {
+        await supabase.from('products').update({ stock: prod.stock - movement.quantity }).eq('id', movement.product_id);
+      }
+    } else if (movement.type === 'exit') {
+      const { data: prod } = await supabase.from('products').select('stock').eq('id', movement.product_id).single();
+      if (prod) {
+        await supabase.from('products').update({ stock: prod.stock + movement.quantity }).eq('id', movement.product_id);
+      }
+    } else if (movement.type === 'product_transfer') {
+      const { data: prod1 } = await supabase.from('products').select('stock').eq('id', movement.product_id).single();
+      if (prod1) {
+        await supabase.from('products').update({ stock: prod1.stock + movement.quantity }).eq('id', movement.product_id);
+      }
+      if (movement.target_product_id) {
+         const { data: prod2 } = await supabase.from('products').select('stock').eq('id', movement.target_product_id).single();
+         if (prod2) {
+           await supabase.from('products').update({ stock: prod2.stock - movement.quantity }).eq('id', movement.target_product_id);
+         }
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from('movements')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) throw deleteError;
+
+    res.json({ message: 'Movimentação excluída e estoque revertido' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}

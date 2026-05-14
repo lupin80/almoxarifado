@@ -11,11 +11,12 @@ import {
   ArrowRight,
   ChevronDown,
   Plus,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Trash2
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { listProducts } from '../services/productService';
-import { listMovements, createMovement } from '../services/movementsService';
+import { listMovements, createMovement, deleteMovement } from '../services/movementsService';
 import { listDestinations, createDestination } from '../services/destinationService';
 
 export function MovementForm() {
@@ -89,6 +90,26 @@ export function MovementForm() {
       setIsDestModalOpen(false);
     } catch (error) {
       console.error('Erro ao salvar destino:', error);
+    }
+  };
+
+  const handleDeleteMovement = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta movimentação? O estoque será revertido.')) return;
+    
+    try {
+      await deleteMovement(id);
+      
+      // Refresh data
+      const [prods, moves] = await Promise.all([
+        listProducts(),
+        listMovements(),
+      ]);
+      setProducts(prods);
+      setMovements(moves);
+      setStatus({ type: 'success', message: 'Movimentação excluída e estoque atualizado.' });
+    } catch (error: any) {
+      console.error('Erro ao excluir movimentação:', error);
+      setStatus({ type: 'error', message: error.message || 'Erro ao excluir movimentação.' });
     }
   };
 
@@ -427,12 +448,13 @@ export function MovementForm() {
                       <th className="px-6 py-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Ativo</th>
                       <th className="px-6 py-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest text-right">Qtd</th>
                       <th className="px-6 py-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Fluxo</th>
+                      <th className="px-6 py-3 text-[10px] font-black text-on-surface-variant uppercase tracking-widest text-right">Ação</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {filteredMovements.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-20 text-center text-on-surface-variant text-sm italic">
+                        <td colSpan={6} className="px-6 py-20 text-center text-on-surface-variant text-sm italic">
                           Nenhuma movimentação encontrada para este filtro.
                         </td>
                       </tr>
@@ -484,6 +506,15 @@ export function MovementForm() {
                                   </>
                                 )}
                               </div>
+                            </td>
+                            <td className="px-6 py-3 text-right">
+                              <button 
+                                onClick={() => handleDeleteMovement(m.id)}
+                                className="p-2 text-on-surface-variant hover:text-tertiary transition-colors"
+                                title="Excluir movimentação"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </td>
                           </tr>
                         );

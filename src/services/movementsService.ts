@@ -24,3 +24,9 @@ export async function createMovement(payload: Record<string, unknown>): Promise<
   });
 }
 
+export async function deleteMovement(id: string): Promise<void> {
+  await apiRequest<void>(`/movements/${id}`, {
+    method: 'DELETE',
+  });
+}
+

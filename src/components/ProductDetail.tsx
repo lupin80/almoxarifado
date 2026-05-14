@@ -26,6 +26,7 @@ import { cn } from '../lib/utils';
 import { resolveProductImageUrl } from '../lib/images';
 import { useAuth } from './AuthProvider';
 import { getUserPermissions } from '../lib/permissions';
+import { deleteMovement } from '../services/movementsService';
 
 const CheckMemo = React.memo(Check);
 const CopyMemo = React.memo(Copy);
@@ -172,6 +173,19 @@ export function ProductDetail({ productId, onBack }: ProductDetailProps) {
     }
   };
 
+  const handleDeleteMovement = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!window.confirm('Tem certeza que deseja excluir esta movimentação? O estoque será revertido.')) return;
+    
+    try {
+      await deleteMovement(id);
+      fetchData(); // Refresh all data to get updated stock and movements
+    } catch (error: any) {
+      console.error('Erro ao excluir movimentação:', error);
+      alert(error.message || 'Erro ao excluir movimentação.');
+    }
+  };
+
 const copySku = useCallback(async () => {
     if (!product?.sku) return;
     try {
@@ -309,6 +323,16 @@ const copySku = useCallback(async () => {
               </>
             )}
           </div>
+        </td>
+        <td className="px-6 py-4 text-right">
+          <button 
+            type="button"
+            onClick={(e) => handleDeleteMovement(e, m.id)}
+            className="p-2 text-on-surface-variant hover:text-tertiary transition-colors"
+            title="Excluir movimentação"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </td>
       </tr>
     );
@@ -543,12 +567,15 @@ const copySku = useCallback(async () => {
                         <th scope="col" className="px-6 py-4">
                           Origem/destino
                         </th>
+                        <th scope="col" className="px-6 py-4 text-right">
+                          Ação
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {sortedMovements.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-6 py-14 text-center text-on-surface-variant text-sm">
+                          <td colSpan={5} className="px-6 py-14 text-center text-on-surface-variant text-sm">
                             <History className="w-10 h-10 mx-auto mb-3 opacity-30" aria-hidden />
                             Nenhuma movimentação registrada para este ativo.
                           </td>
@@ -632,6 +659,16 @@ const copySku = useCallback(async () => {
                                 <span className="text-secondary">{m.destination}</span>
                               </>
                             )}
+                          </div>
+                          <div className="mt-2 text-right">
+                            <button 
+                              type="button"
+                              onClick={(e) => handleDeleteMovement(e, m.id)}
+                              className="p-2 text-on-surface-variant hover:text-tertiary transition-colors inline-flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span className="text-xs uppercase font-bold tracking-widest">Excluir</span>
+                            </button>
                           </div>
                         </button>
                       );
