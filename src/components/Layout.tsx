@@ -313,6 +313,7 @@ export function TopBar({ onViewChange, searchQuery, onSearchChange }: {
       if (result?.user) {
         updateUser(result.user);
         setAvatarBuster(prev => prev + 1);
+        setPreviewUrl(null); // Clear preview to force loading the real URL
       }
     } catch (error) {
       console.error('Avatar upload failed:', error);
