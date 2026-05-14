@@ -8,7 +8,15 @@ export async function listMovements(req, res) {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.json(data);
+    
+    const mappedData = data.map(m => ({
+      ...m,
+      productId: m.product_id,
+      targetProductId: m.target_product_id,
+      createdAt: m.created_at
+    }));
+
+    res.json(mappedData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

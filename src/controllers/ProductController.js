@@ -1,6 +1,17 @@
 import { supabase } from '../config/supabase.js';
 import AuditController from './AuditController.js';
 
+const mapProduct = (p) => {
+  if (!p) return p;
+  return {
+    ...p,
+    maxStock: p.max_stock,
+    supplierId: p.supplier_id,
+    updatedAt: p.updated_at,
+    invoiceNumber: p.invoice_number,
+  };
+};
+
 export async function listProducts(req, res) {
   try {
     const { data, error } = await supabase
@@ -10,7 +21,7 @@ export async function listProducts(req, res) {
       .order('name', { ascending: true });
 
     if (error) throw error;
-    res.json(data);
+    res.json(data.map(mapProduct));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -25,7 +36,7 @@ export async function listDeletedProducts(req, res) {
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
-    res.json(data);
+    res.json(data.map(mapProduct));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -44,7 +55,7 @@ export async function getProductById(req, res) {
       throw error;
     }
 
-    res.json(data);
+    res.json(mapProduct(data));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -87,7 +98,7 @@ export async function createProduct(req, res) {
 
     await AuditController.log(req.userId, 'CREATE', 'products', data.id, null, data);
 
-    res.status(201).json(data);
+    res.status(201).json(mapProduct(data));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -214,7 +225,7 @@ export async function checkSku(req, res) {
     
     return res.json({ 
       exists: !!data,
-      product: data || null
+      product: data ? mapProduct(data) : null
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
