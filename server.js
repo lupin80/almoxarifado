@@ -12,10 +12,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ===== FRONTEND =====
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
+
+// ====================
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -30,8 +33,10 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json());
 
+// --- API ROUTES ---
 app.use('/api', routes);
 
+// --- HEALTH ---
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -41,10 +46,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ===== FRONTEND FALLBACK =====
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// --- SERVER INIT ---
 const server = app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Backend do Vault (Modular) rodando em http://localhost:${PORT}`);
 });
