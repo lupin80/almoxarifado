@@ -19,9 +19,10 @@ import { listSuppliers, deleteSupplier } from '../services/supplierService';
 
 interface SuppliersProps {
   searchQuery?: string;
+  onViewChange?: (view: any) => void;
 }
 
-export function Suppliers({ searchQuery }: SuppliersProps) {
+export function Suppliers({ searchQuery, onViewChange }: SuppliersProps) {
   const { user } = useAuth();
   const permissions = getUserPermissions(user);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -124,15 +125,24 @@ export function Suppliers({ searchQuery }: SuppliersProps) {
           <h1 className="text-4xl font-black text-on-surface tracking-tight uppercase mb-2 font-headline">Gestão de Fornecedores</h1>
           <p className="text-on-surface-variant">Visualize e gerencie seu ecossistema de parceiros logísticos e industriais.</p>
         </div>
-        {permissions.canCreateSuppliers && (
+        <div className="flex gap-2">
           <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-gradient-to-r from-secondary to-secondary-container text-on-secondary px-8 py-4 rounded-sm font-headline font-extrabold text-sm tracking-widest uppercase transition-transform hover:scale-[1.02] active:scale-95 shadow-lg flex items-center gap-3"
+            onClick={() => onViewChange?.('deleted-items')}
+            className="bg-surface-container-high text-on-surface px-5 py-4 rounded-sm font-headline font-extrabold text-sm tracking-widest uppercase transition-transform hover:scale-[1.02] active:scale-95 shadow-lg flex items-center gap-3 border border-white/5 hover:bg-tertiary/10 hover:text-tertiary"
           >
-            <PlusCircle className="w-5 h-5" />
-            ADICIONAR NOVO FORNECEDOR
+            <Trash2 className="w-5 h-5" />
+            EXCLUÍDOS
           </button>
-        )}
+          {permissions.canCreateSuppliers && (
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-gradient-to-r from-secondary to-secondary-container text-on-secondary px-8 py-4 rounded-sm font-headline font-extrabold text-sm tracking-widest uppercase transition-transform hover:scale-[1.02] active:scale-95 shadow-lg flex items-center gap-3"
+            >
+              <PlusCircle className="w-5 h-5" />
+              ADICIONAR
+            </button>
+          )}
+        </div>
       </header>
       <section className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatItem label="Ativos (30 dias)" value={suppliers.length.toString()} />

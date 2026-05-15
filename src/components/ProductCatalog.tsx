@@ -24,9 +24,10 @@ import { getUserPermissions } from '../lib/permissions';
 interface ProductCatalogProps {
   onViewProduct?: (id: string) => void;
   searchQuery?: string;
+  onViewChange?: (view: any) => void;
 }
 
-export function ProductCatalog({ onViewProduct, searchQuery }: ProductCatalogProps) {
+export function ProductCatalog({ onViewProduct, searchQuery, onViewChange }: ProductCatalogProps) {
   const { user } = useAuth();
   const permissions = getUserPermissions(user);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -164,9 +165,16 @@ export function ProductCatalog({ onViewProduct, searchQuery }: ProductCatalogPro
             className="bg-surface-container-high text-on-surface px-5 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 border border-white/5 hover:bg-surface-bright transition-all"
           >
             <List className="w-4 h-4" />
-            Gerenciar Categorias
+            Categorias
           </button>
         )}
+        <button 
+          onClick={() => onViewChange?.('deleted-items')}
+          className="bg-surface-container-high text-on-surface px-5 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 border border-white/5 hover:bg-tertiary/10 hover:text-tertiary transition-all"
+        >
+          <Trash2 className="w-4 h-4" />
+          Excluídos
+        </button>
         <button 
           onClick={() => setIsModalOpen(true)}
           className="bg-secondary text-on-secondary px-6 py-2.5 rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-secondary/10 transition-all hover:scale-[1.01] active:scale-95 uppercase tracking-widest w-full md:w-auto"

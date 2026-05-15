@@ -19,7 +19,11 @@ import { listProducts } from '../services/productService';
 import { listMovements, createMovement, deleteMovement } from '../services/movementsService';
 import { listDestinations, createDestination } from '../services/destinationService';
 
-export function MovementForm() {
+interface MovementFormProps {
+  onViewChange?: (view: any) => void;
+}
+
+export function MovementForm({ onViewChange }: MovementFormProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
   const [destinations, setDestinations] = useState<any[]>([]);

@@ -68,12 +68,13 @@ function renderCurrentView(
         <ProductCatalog
           {...searchProps}
           onViewProduct={onViewProduct}
+          onViewChange={onViewChange}
         />
       );
     case 'movements':
-      return <MovementForm />;
+      return <MovementForm onViewChange={onViewChange} />;
     case 'suppliers':
-      return <Suppliers {...searchProps} />;
+      return <Suppliers {...searchProps} onViewChange={onViewChange} />;
     case 'abc-analysis':
       return <ABCAnalysis />;
     case 'reports':
